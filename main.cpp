@@ -1,4 +1,3 @@
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winhttp.h>
 #include <gdiplus.h>
@@ -12,8 +11,6 @@
 
 using namespace Gdiplus;
 
-#define HOTKEY_ID 1
-
 std::vector<BYTE> CaptureScreen() {
     std::vector<BYTE> data;
     
@@ -23,27 +20,31 @@ std::vector<BYTE> CaptureScreen() {
     HDC hScreen = GetDC(NULL);
     HDC hDC = CreateCompatibleDC(hScreen);
     HBITMAP hBmp = CreateCompatibleBitmap(hScreen, w, h);
-    SelectObject(hDC, hBmp);
+    HGDIOBJ hOld = SelectObject(hDC, hBmp);
     BitBlt(hDC, 0, 0, w, h, hScreen, 0, 0, SRCCOPY);
     
-    Bitmap bmp(hBmp, NULL);
+    Bitmap* bmp = new Bitmap(hBmp, NULL);
     IStream* stream = NULL;
     CreateStreamOnHGlobal(NULL, TRUE, &stream);
     
     CLSID clsid;
     CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &clsid);
-    bmp.Save(stream, &clsid);
+    bmp->Save(stream, &clsid);
     
     STATSTG stat;
     stream->Stat(&stat, STATFLAG_DEFAULT);
-    ULONG size = stat.cbSize.LowPart;
+    ULONG size = (ULONG)stat.cbSize.QuadPart;
     
     data.resize(size);
-    LARGE_INTEGER pos = {0};
+    LARGE_INTEGER pos;
+    pos.QuadPart = 0;
     stream->Seek(pos, STREAM_SEEK_SET, NULL);
-    stream->Read(data.data(), size, NULL);
+    ULONG bytesRead;
+    stream->Read(data.data(), size, &bytesRead);
     stream->Release();
     
+    delete bmp;
+    SelectObject(hDC, hOld);
     DeleteObject(hBmp);
     DeleteDC(hDC);
     ReleaseDC(NULL, hScreen);
@@ -52,23 +53,30 @@ std::vector<BYTE> CaptureScreen() {
 }
 
 std::wstring Upload(const std::vector<BYTE>& img) {
-    HINTERNET hSession = WinHttpOpen(L"Nekoo/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+    HINTERNET hSession = WinHttpOpen(L"Nekoo/1.0", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
     if (!hSession) return L"";
     
     HINTERNET hConnect = WinHttpConnect(hSession, L"nekoo.ru", INTERNET_DEFAULT_HTTPS_PORT, 0);
-    if (!hConnect) { WinHttpCloseHandle(hSession); return L""; }
+    if (!hConnect) {
+        WinHttpCloseHandle(hSession);
+        return L"";
+    }
     
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/upload", NULL, NULL, NULL, WINHTTP_FLAG_SECURE);
-    if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return L""; }
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/upload", NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    if (!hRequest) {
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return L"";
+    }
     
     std::ostringstream body;
     body << "--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"s.png\"\r\nContent-Type: image/png\r\n\r\n";
-    body.write((char*)img.data(), img.size());
+    body.write((const char*)img.data(), img.size());
     body << "\r\n--B--\r\n";
     std::string b = body.str();
     
-    WinHttpAddRequestHeaders(hRequest, L"Content-Type: multipart/form-data; boundary=B", -1, WINHTTP_ADDREQ_FLAG_ADD);
-    WinHttpSendRequest(hRequest, NULL, 0, (LPVOID)b.c_str(), b.length(), b.length(), 0);
+    WinHttpAddRequestHeaders(hRequest, L"Content-Type: multipart/form-data; boundary=B", (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
+    WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, (LPVOID)b.c_str(), (DWORD)b.length(), (DWORD)b.length(), 0);
     WinHttpReceiveResponse(hRequest, NULL);
     
     std::string resp;
@@ -77,7 +85,7 @@ std::wstring Upload(const std::vector<BYTE>& img) {
         std::vector<char> buf(sz + 1);
         DWORD read;
         WinHttpReadData(hRequest, buf.data(), sz, &read);
-        buf[read] = 0;
+        buf[read] = '\0';
         resp += buf.data();
     }
     
@@ -88,7 +96,8 @@ std::wstring Upload(const std::vector<BYTE>& img) {
     size_t p = resp.find("https://nekoo.ru/");
     if (p != std::string::npos) {
         size_t e = resp.find_first_of("\"'< ", p);
-        return std::wstring(resp.begin() + p, resp.begin() + e);
+        std::string url = resp.substr(p, e - p);
+        return std::wstring(url.begin(), url.end());
     }
     return L"";
 }
@@ -96,9 +105,11 @@ std::wstring Upload(const std::vector<BYTE>& img) {
 void CopyClip(const std::wstring& txt) {
     if (OpenClipboard(NULL)) {
         EmptyClipboard();
-        HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, (txt.length() + 1) * 2);
+        size_t size = (txt.length() + 1) * sizeof(wchar_t);
+        HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, size);
         if (h) {
-            memcpy(GlobalLock(h), txt.c_str(), (txt.length() + 1) * 2);
+            void* mem = GlobalLock(h);
+            memcpy(mem, txt.c_str(), size);
             GlobalUnlock(h);
             SetClipboardData(CF_UNICODETEXT, h);
         }
@@ -108,19 +119,30 @@ void CopyClip(const std::wstring& txt) {
 
 void DoCapture() {
     std::wcout << L"\n📸 Capturing..." << std::endl;
-    auto img = CaptureScreen();
-    if (img.empty()) { std::wcerr << L"❌ Failed\n"; return; }
+    std::vector<BYTE> img = CaptureScreen();
+    if (img.empty()) {
+        std::wcerr << L"❌ Failed\n";
+        return;
+    }
     
     std::wcout << L"⬆️  Uploading..." << std::endl;
-    auto url = Upload(img);
-    if (url.empty()) { std::wcerr << L"❌ Upload failed\n"; return; }
+    std::wstring url = Upload(img);
+    if (url.empty()) {
+        std::wcerr << L"❌ Upload failed\n";
+        return;
+    }
     
     std::wcout << L"✅ " << url << std::endl;
     CopyClip(url);
     std::wcout << L"📋 Copied!\n";
 }
 
-int main() {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    AllocConsole();
+    FILE* fp;
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+    
     GdiplusStartupInput gsi;
     ULONG_PTR token;
     GdiplusStartup(&token, &gsi, NULL);
@@ -129,17 +151,19 @@ int main() {
     std::wcout << L"Hotkey: Ctrl+Shift+S\n";
     std::wcout << L"Press Ctrl+C to exit\n\n";
     
-    if (!RegisterHotKey(NULL, HOTKEY_ID, MOD_CONTROL | MOD_SHIFT, 'S')) {
+    if (!RegisterHotKey(NULL, 1, MOD_CONTROL | MOD_SHIFT, 'S')) {
         std::wcerr << L"Failed to register hotkey!\n";
         return 1;
     }
     
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
-        if (msg.message == WM_HOTKEY) DoCapture();
+        if (msg.message == WM_HOTKEY) {
+            DoCapture();
+        }
     }
     
-    UnregisterHotKey(NULL, HOTKEY_ID);
+    UnregisterHotKey(NULL, 1);
     GdiplusShutdown(token);
     return 0;
 }

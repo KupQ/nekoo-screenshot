@@ -7,12 +7,7 @@
 #pragma comment(lib, "winhttp.lib")
 
 std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
-    // For testing, return a fake URL
-    // TODO: Implement actual upload when nekoo.ru API is ready
-    return L"https://nekoo.ru/test_" + std::to_wstring(GetTickCount64());
-    
-    /* Real upload code - uncomment when API is ready
-    HINTERNET hSession = WinHttpOpen(L"Nekoo/3.0",
+    HINTERNET hSession = WinHttpOpen(L"Nekoo Screenshot/3.0",
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
         WINHTTP_NO_PROXY_NAME,
         WINHTTP_NO_PROXY_BYPASS, 0);
@@ -27,7 +22,7 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
         return L"";
     }
     
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/upload",
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/upload",
         NULL, WINHTTP_NO_REFERER,
         WINHTTP_DEFAULT_ACCEPT_TYPES,
         WINHTTP_FLAG_SECURE);
@@ -38,20 +33,28 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
         return L"";
     }
     
-    // Create multipart form data
+    // Create multipart form data boundary
+    std::string boundary = "----NekooScreenshotBoundary";
+    
+    // Build multipart body
     std::ostringstream body;
-    body << "--BOUNDARY\r\n";
+    body << "--" << boundary << "\r\n";
     body << "Content-Disposition: form-data; name=\"file\"; filename=\"screenshot.png\"\r\n";
     body << "Content-Type: image/png\r\n\r\n";
     body.write((const char*)imageData.data(), imageData.size());
-    body << "\r\n--BOUNDARY--\r\n";
+    body << "\r\n--" << boundary << "--\r\n";
     
     std::string bodyStr = body.str();
     
+    // Set content type header
+    std::wstring contentType = L"Content-Type: multipart/form-data; boundary=" + 
+        std::wstring(boundary.begin(), boundary.end());
+    
     WinHttpAddRequestHeaders(hRequest,
-        L"Content-Type: multipart/form-data; boundary=BOUNDARY",
+        contentType.c_str(),
         (DWORD)-1, WINHTTP_ADDREQ_FLAG_ADD);
     
+    // Send request
     BOOL result = WinHttpSendRequest(hRequest,
         WINHTTP_NO_ADDITIONAL_HEADERS, 0,
         (LPVOID)bodyStr.c_str(), (DWORD)bodyStr.length(),
@@ -63,6 +66,7 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
         result = WinHttpReceiveResponse(hRequest, NULL);
         
         if (result) {
+            // Read response
             std::string response;
             DWORD dwSize;
             
@@ -76,13 +80,19 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
                 }
             }
             
-            // Extract URL from JSON response
-            size_t pos = response.find("\"url\":");
-            if (pos != std::string::npos) {
-                size_t start = response.find("\"", pos + 6) + 1;
-                size_t end = response.find("\"", start);
-                std::string urlStr = response.substr(start, end - start);
-                url = std::wstring(urlStr.begin(), urlStr.end());
+            // Parse JSON response to extract URL
+            // Looking for: "url": "https://cdn.nekoo.ru/..."
+            size_t urlPos = response.find("\"url\":");
+            if (urlPos != std::string::npos) {
+                size_t urlStart = response.find("\"", urlPos + 6);
+                if (urlStart != std::string::npos) {
+                    urlStart++; // Skip opening quote
+                    size_t urlEnd = response.find("\"", urlStart);
+                    if (urlEnd != std::string::npos) {
+                        std::string urlStr = response.substr(urlStart, urlEnd - urlStart);
+                        url = std::wstring(urlStr.begin(), urlStr.end());
+                    }
+                }
             }
         }
     }
@@ -92,5 +102,4 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
     WinHttpCloseHandle(hSession);
     
     return url;
-    */
 }

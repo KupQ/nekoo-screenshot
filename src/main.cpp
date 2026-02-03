@@ -331,8 +331,7 @@ std::wstring GetKeyName(UINT vk, UINT mods) {
 }
 
 LRESULT CALLBACK HotkeyEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
-    static UINT* pVK = (UINT*)dwRefData;
-    static UINT* pMods = pVK + 1;
+    UINT* pData = (UINT*)dwRefData;
     
     switch (msg) {
         case WM_KEYDOWN:
@@ -350,8 +349,9 @@ LRESULT CALLBACK HotkeyEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 return 0;
             }
             
-            *pVK = vk;
-            *pMods = mods;
+            // Store in the data array
+            pData[0] = vk;
+            pData[1] = mods;
             
             SetWindowText(hwnd, GetKeyName(vk, mods).c_str());
             return 0;
@@ -362,8 +362,8 @@ LRESULT CALLBACK HotkeyEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             return 0;
         
         case WM_KILLFOCUS:
-            if (*pVK != 0) {
-                SetWindowText(hwnd, GetKeyName(*pVK, *pMods).c_str());
+            if (pData[0] != 0) {
+                SetWindowText(hwnd, GetKeyName(pData[0], pData[1]).c_str());
             }
             return 0;
     }
@@ -371,33 +371,24 @@ LRESULT CALLBACK HotkeyEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
-static UINT g_tempFullscreenVK = 0;
-static UINT g_tempFullscreenMods = 0;
-static UINT g_tempRegionVK = 0;
-static UINT g_tempRegionMods = 0;
+static UINT g_fullscreenData[2] = {0};
+static UINT g_regionData[2] = {0};
 
 INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_INITDIALOG: {
-            // Initialize temp values
-            g_tempFullscreenVK = g_settings.fullscreenKey;
-            g_tempFullscreenMods = g_settings.fullscreenModifiers;
-            g_tempRegionVK = g_settings.regionKey;
-            g_tempRegionMods = g_settings.regionModifiers;
+            // Initialize data arrays with current settings
+            g_fullscreenData[0] = g_settings.fullscreenKey;
+            g_fullscreenData[1] = g_settings.fullscreenModifiers;
+            g_regionData[0] = g_settings.regionKey;
+            g_regionData[1] = g_settings.regionModifiers;
             
             // Subclass edit controls for custom hotkey capture
             HWND hFullscreen = GetDlgItem(hDlg, IDC_HOTKEY_DISPLAY);
             HWND hRegion = GetDlgItem(hDlg, IDC_HOTKEY_REGION_DISPLAY);
             
-            static UINT fullscreenData[2];
-            static UINT regionData[2];
-            fullscreenData[0] = g_tempFullscreenVK;
-            fullscreenData[1] = g_tempFullscreenMods;
-            regionData[0] = g_tempRegionVK;
-            regionData[1] = g_tempRegionMods;
-            
-            SetWindowSubclass(hFullscreen, HotkeyEditProc, 1, (DWORD_PTR)fullscreenData);
-            SetWindowSubclass(hRegion, HotkeyEditProc, 2, (DWORD_PTR)regionData);
+            SetWindowSubclass(hFullscreen, HotkeyEditProc, 1, (DWORD_PTR)g_fullscreenData);
+            SetWindowSubclass(hRegion, HotkeyEditProc, 2, (DWORD_PTR)g_regionData);
             
             // Display current hotkeys
             SetWindowText(hFullscreen, GetKeyName(g_settings.fullscreenKey, g_settings.fullscreenModifiers).c_str());
@@ -428,24 +419,15 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
                 case IDOK: {
-                    // Get captured hotkeys from temp variables
-                    HWND hFullscreen = GetDlgItem(hDlg, IDC_HOTKEY_DISPLAY);
-                    HWND hRegion = GetDlgItem(hDlg, IDC_HOTKEY_REGION_DISPLAY);
-                    
-                    // Retrieve from subclass data
-                    UINT fullscreenData[2];
-                    UINT regionData[2];
-                    GetWindowSubclass(hFullscreen, HotkeyEditProc, 1, (DWORD_PTR*)&fullscreenData);
-                    GetWindowSubclass(hRegion, HotkeyEditProc, 2, (DWORD_PTR*)&regionData);
-                    
-                    if (fullscreenData[0] != 0) {
-                        g_settings.fullscreenKey = fullscreenData[0];
-                        g_settings.fullscreenModifiers = fullscreenData[1];
+                    // Get captured hotkeys from global arrays
+                    if (g_fullscreenData[0] != 0) {
+                        g_settings.fullscreenKey = g_fullscreenData[0];
+                        g_settings.fullscreenModifiers = g_fullscreenData[1];
                     }
                     
-                    if (regionData[0] != 0) {
-                        g_settings.regionKey = regionData[0];
-                        g_settings.regionModifiers = regionData[1];
+                    if (g_regionData[0] != 0) {
+                        g_settings.regionKey = g_regionData[0];
+                        g_settings.regionModifiers = g_regionData[1];
                     }
                     
                     // Get auto-start

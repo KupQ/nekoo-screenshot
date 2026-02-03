@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <windowsx.h>
 #include <gdiplus.h>
 #include "overlay.h"
 
@@ -146,7 +147,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 
                 // Draw dimensions text
                 wchar_t text[64];
-                swprintf_s(text, L"%d x %d", w, h);
+                _snwprintf_s(text, _TRUNCATE, L"%d x %d", w, h);
                 
                 Font font(L"Segoe UI", 12);
                 SolidBrush textBrush(Color(255, 255, 255, 255));

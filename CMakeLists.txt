@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 # Enable Windows subsystem (no console)
 if(WIN32)
     set(CMAKE_WIN32_EXECUTABLE TRUE)
+    # Force Unicode build
+    add_definitions(-DUNICODE -D_UNICODE)
 endif()
 
 add_executable(nekoo-screenshot WIN32

@@ -34,41 +34,41 @@ jobs:
       - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: nekoo-screenshot-exe
-          path: build/Release/nekoo-screenshot.exe
+          name: seko-exe
+          path: build/Release/seko.exe
       
       - name: Upload Installer
         uses: actions/upload-artifact@v4
         with:
-          name: nekoo-screenshot-installer
-          path: installer/nekoo-screenshot-setup.exe
+          name: seko-installer
+          path: installer/seko-setup.exe
       
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            build/Release/nekoo-screenshot.exe
-            installer/nekoo-screenshot-setup.exe
+            build/Release/seko.exe
+            installer/seko-setup.exe
           body: |
-            ## Nekoo Screenshot Tool v${{ github.ref_name }}
+            ## Seko Screenshot Tool v${{ github.ref_name }}
             
-            **Windows Screenshot Tool with GUI**
+            **Fast Windows Screenshot Tool**
             
             ### Features
             - 🎯 System tray application (no console)
             - ⌨️ Hotkeys: Ctrl+Shift+S (fullscreen), Ctrl+Shift+R (region)
             - 🖼️ Region selection with visual overlay
             - ☁️ Auto-upload to nekoo.ru
-            - 📋 Toast notification with copy button
-            - 🎨 Nekoo dark theme design
+            - 📋 URL auto-copied to clipboard
+            - 🎨 Compact settings dialog
             
             ### Download
-            - **Installer (Recommended)**: `nekoo-screenshot-setup.exe`
-            - **Portable**: `nekoo-screenshot.exe`
+            - **Installer (Recommended)**: `seko-setup.exe`
+            - **Portable**: `seko.exe`
             
             ### Installation
-            1. Download `nekoo-screenshot-setup.exe`
+            1. Download `seko-setup.exe`
             2. Run the installer
             3. Choose "Start with Windows" option
             4. Click Finish

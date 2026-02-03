@@ -1,27 +1,24 @@
 #include "resource.h"
 #include <windows.h>
 
-// Nekoo Screenshot Settings Dialog - Clean & Minimal Design
-IDD_SETTINGS DIALOGEX 0, 0, 280, 220
+// Nekoo Screenshot Settings - Ultra Minimal & Elegant
+IDD_SETTINGS DIALOGEX 0, 0, 240, 180
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_CENTER
 CAPTION "Nekoo Screenshot"
 FONT 9, "Segoe UI"
 BEGIN
-    // Title
-    LTEXT "Settings", IDC_STATIC, 20, 15, 240, 14, SS_LEFT
-    
     // Fullscreen hotkey
-    LTEXT "Fullscreen Capture", IDC_STATIC, 20, 45, 100, 10
-    CONTROL "", IDC_HOTKEY, "msctls_hotkey32", WS_BORDER | WS_TABSTOP, 20, 58, 240, 18
+    LTEXT "Fullscreen", IDC_STATIC, 15, 20, 60, 10
+    CONTROL "", IDC_HOTKEY, "msctls_hotkey32", WS_BORDER | WS_TABSTOP, 15, 32, 210, 20
     
     // Region hotkey
-    LTEXT "Region Capture", IDC_STATIC, 20, 90, 100, 10
-    CONTROL "", IDC_HOTKEY_REGION, "msctls_hotkey32", WS_BORDER | WS_TABSTOP, 20, 103, 240, 18
+    LTEXT "Region", IDC_STATIC, 15, 62, 60, 10
+    CONTROL "", IDC_HOTKEY_REGION, "msctls_hotkey32", WS_BORDER | WS_TABSTOP, 15, 74, 210, 20
     
     // Auto-start
-    CONTROL "Start with Windows", IDC_AUTOSTART, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 20, 140, 240, 14
+    CONTROL "Start with Windows", IDC_AUTOSTART, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 15, 110, 210, 14
     
     // Buttons
-    DEFPUSHBUTTON "Save", IDOK, 110, 175, 70, 28
-    PUSHBUTTON "Cancel", IDCANCEL, 190, 175, 70, 28
+    DEFPUSHBUTTON "Save", IDOK, 95, 140, 60, 26
+    PUSHBUTTON "Cancel", IDCANCEL, 165, 140, 60, 26
 END

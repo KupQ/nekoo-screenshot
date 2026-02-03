@@ -301,6 +301,14 @@ void UnregisterHotkeys() {
 INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_INITDIALOG: {
+            // Allow hotkeys without modifiers (like PrintScreen alone)
+            SendDlgItemMessage(hDlg, IDC_HOTKEY, HKM_SETRULES, 
+                HKCOMB_NONE | HKCOMB_S, 
+                MAKELPARAM(HOTKEYF_CONTROL | HOTKEYF_ALT, 0));
+            SendDlgItemMessage(hDlg, IDC_HOTKEY_REGION, HKM_SETRULES, 
+                HKCOMB_NONE | HKCOMB_S, 
+                MAKELPARAM(HOTKEYF_CONTROL | HOTKEYF_ALT, 0));
+            
             // Set fullscreen hotkey
             BYTE mods = 0;
             if (g_settings.fullscreenModifiers & MOD_CONTROL) mods |= HOTKEYF_CONTROL;

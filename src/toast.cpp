@@ -8,8 +8,8 @@ static std::wstring g_toastMessage;
 static bool g_isUploading = false;
 static UINT_PTR g_timerId = 0;
 
-#define TOAST_WIDTH 380
-#define TOAST_HEIGHT 90
+#define TOAST_WIDTH 400
+#define TOAST_HEIGHT 100
 #define TOAST_MARGIN 20
 #define TOAST_TIMER_ID 1
 
@@ -68,8 +68,8 @@ void UpdateToastWithUrl(const std::wstring& url) {
         // Create copy button
         HWND hBtn = CreateWindow(L"BUTTON", L"Copy",
             WS_CHILD | WS_VISIBLE | BS_FLAT,
-            TOAST_WIDTH - 90, TOAST_HEIGHT - 38,
-            70, 28,
+            TOAST_WIDTH - 90, TOAST_HEIGHT - 40,
+            70, 30,
             g_hwndToast, (HMENU)1, GetModuleHandle(NULL), NULL);
         
         HFONT hFont = CreateFont(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -101,8 +101,8 @@ LRESULT CALLBACK ToastWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_CTLCOLORBTN: {
             HDC hdcButton = (HDC)wParam;
             SetTextColor(hdcButton, RGB(255, 255, 255));
-            SetBkColor(hdcButton, RGB(100, 100, 100));
-            return (LRESULT)CreateSolidBrush(RGB(100, 100, 100));
+            SetBkColor(hdcButton, RGB(80, 80, 80));
+            return (LRESULT)CreateSolidBrush(RGB(80, 80, 80));
         }
         
         case WM_PAINT: {
@@ -125,36 +125,63 @@ LRESULT CALLBACK ToastWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             SelectObject(hdc, hOldBrush);
             DeleteObject(hPen);
             
-            // Title
             SetBkMode(hdc, TRANSPARENT);
-            SetTextColor(hdc, RGB(50, 50, 50));
-            HFONT hFont = CreateFont(14, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
-                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-            HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
             
-            RECT titleRect = {15, 12, rc.right - 10, 28};
-            DrawText(hdc, g_toastMessage.c_str(), -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-            
-            // URL or uploading message
-            SelectObject(hdc, hOldFont);
-            DeleteObject(hFont);
-            
-            hFont = CreateFont(11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-                CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-            SelectObject(hdc, hFont);
-            SetTextColor(hdc, RGB(100, 100, 100));
-            
-            RECT urlRect = {15, 35, rc.right - 100, 55};
+            // Title - LARGER for uploading
             if (g_isUploading) {
+                SetTextColor(hdc, RGB(40, 40, 40));
+                HFONT hFont = CreateFont(18, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+                HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+                
+                RECT titleRect = {15, 20, rc.right - 10, 45};
+                DrawText(hdc, g_toastMessage.c_str(), -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                
+                // Subtitle
+                SelectObject(hdc, hOldFont);
+                DeleteObject(hFont);
+                
+                hFont = CreateFont(13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+                SelectObject(hdc, hFont);
+                SetTextColor(hdc, RGB(120, 120, 120));
+                
+                RECT urlRect = {15, 50, rc.right - 10, 70};
                 DrawText(hdc, L"Please wait...", -1, &urlRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-            } else if (!g_toastUrl.empty()) {
-                DrawText(hdc, g_toastUrl.c_str(), -1, &urlRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+                
+                SelectObject(hdc, hOldFont);
+                DeleteObject(hFont);
+            } else {
+                // Success state
+                SetTextColor(hdc, RGB(50, 50, 50));
+                HFONT hFont = CreateFont(14, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+                HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+                
+                RECT titleRect = {15, 12, rc.right - 10, 28};
+                DrawText(hdc, g_toastMessage.c_str(), -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+                
+                // URL
+                SelectObject(hdc, hOldFont);
+                DeleteObject(hFont);
+                
+                hFont = CreateFont(11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                    DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                    CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+                SelectObject(hdc, hFont);
+                SetTextColor(hdc, RGB(100, 100, 100));
+                
+                RECT urlRect = {15, 35, rc.right - 100, 55};
+                if (!g_toastUrl.empty()) {
+                    DrawText(hdc, g_toastUrl.c_str(), -1, &urlRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+                }
+                
+                SelectObject(hdc, hOldFont);
+                DeleteObject(hFont);
             }
-            
-            SelectObject(hdc, hOldFont);
-            DeleteObject(hFont);
             
             EndPaint(hwnd, &ps);
             return 0;

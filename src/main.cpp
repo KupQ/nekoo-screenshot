@@ -8,6 +8,7 @@
 #include "resource.h"
 #include "upload.h"
 #include "overlay.h"
+#include "toast.h"
 
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "winhttp.lib")
@@ -254,21 +255,7 @@ void CaptureScreenshot(bool useRegion) {
 }
 
 void ShowToast(const std::wstring& url) {
-    // Simple message box for now - will be replaced with custom toast
-    MessageBox(NULL, url.c_str(), L"Screenshot Uploaded", MB_OK | MB_ICONINFORMATION);
-    
-    // Copy to clipboard
-    if (OpenClipboard(NULL)) {
-        EmptyClipboard();
-        size_t size = (url.length() + 1) * sizeof(wchar_t);
-        HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, size);
-        if (h) {
-            memcpy(GlobalLock(h), url.c_str(), size);
-            GlobalUnlock(h);
-            SetClipboardData(CF_UNICODETEXT, h);
-        }
-        CloseClipboard();
-    }
+    ShowToastNotification(url);
 }
 
 void ShowSettingsDialog() {

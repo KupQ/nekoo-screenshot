@@ -26,7 +26,7 @@ void ShowOverlay(HWND hwndParent, RECT* pRect) {
         WNDCLASSEX wc = {sizeof(WNDCLASSEX)};
         wc.lpfnWndProc = OverlayWndProc;
         wc.hInstance = GetModuleHandle(NULL);
-        wc.lpszClassName = L"NekooOverlayClass";
+        wc.lpszClassName = L"SekoOverlayClass";
         wc.hCursor = LoadCursor(NULL, IDC_CROSS);
         wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
         RegisterClassEx(&wc);
@@ -48,7 +48,7 @@ void ShowOverlay(HWND hwndParent, RECT* pRect) {
     // Create fullscreen overlay
     g_hwndOverlay = CreateWindowEx(
         WS_EX_TOPMOST | WS_EX_LAYERED,
-        L"NekooOverlayClass", L"",
+        L"SekoOverlayClass", L"",
         WS_POPUP,
         0, 0, w, h,
         NULL, NULL, GetModuleHandle(NULL), NULL);
@@ -131,6 +131,19 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             
             Graphics graphics(hdc);
             graphics.SetSmoothingMode(SmoothingModeAntiAlias);
+            
+            // Draw instruction text at top
+            Font instructFont(L"Segoe UI", 14);
+            SolidBrush instructTextBrush(Color(255, 255, 255, 255));
+            SolidBrush instructBgBrush(Color(180, 0, 0, 0));
+            
+            const wchar_t* instructText = L"Click and drag to select region (ESC to cancel)";
+            RectF instructRect;
+            graphics.MeasureString(instructText, -1, &instructFont, PointF(0, 0), &instructRect);
+            
+            float instructX = (rc.right - instructRect.Width) / 2;
+            graphics.FillRectangle(&instructBgBrush, instructX - 10, 10, instructRect.Width + 20, instructRect.Height + 10);
+            graphics.DrawString(instructText, -1, &instructFont, PointF(instructX, 15), &instructTextBrush);
             
             // Draw dark overlay
             SolidBrush darkBrush(Color(100, 0, 0, 0));

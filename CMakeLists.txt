@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(nekoo-screenshot)
+project(seko)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -10,7 +10,7 @@ if(WIN32)
     add_definitions(-DUNICODE -D_UNICODE)
 endif()
 
-add_executable(nekoo-screenshot WIN32
+add_executable(seko WIN32
     src/main.cpp
     src/upload.cpp
     src/overlay.cpp
@@ -19,7 +19,7 @@ add_executable(nekoo-screenshot WIN32
     src/resource.rc
 )
 
-target_link_libraries(nekoo-screenshot
+target_link_libraries(seko
     gdiplus
     winhttp
     shell32
@@ -27,6 +27,6 @@ target_link_libraries(nekoo-screenshot
 )
 
 # Set application icon
-set_target_properties(nekoo-screenshot PROPERTIES
+set_target_properties(seko PROPERTIES
     WIN32_EXECUTABLE TRUE
 )

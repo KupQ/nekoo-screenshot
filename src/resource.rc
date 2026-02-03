@@ -1,26 +1,26 @@
 #include "resource.h"
 #include <windows.h>
 
-// Nekoo Screenshot Settings - Ultra Minimal & Elegant
-IDD_SETTINGS DIALOGEX 0, 0, 240, 200
+// Seko Screenshot Settings - Compact & Elegant
+IDD_SETTINGS DIALOGEX 0, 0, 180, 150
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_CENTER
-CAPTION "Nekoo Screenshot"
-FONT 9, "Segoe UI"
+CAPTION "Seko Settings"
+FONT 8, "Segoe UI"
 BEGIN
     // Fullscreen hotkey
-    LTEXT "Fullscreen Hotkey", IDC_STATIC, 15, 20, 210, 10
-    EDITTEXT IDC_HOTKEY_DISPLAY, 15, 32, 210, 20, ES_READONLY | WS_BORDER
-    LTEXT "Click and press any key...", IDC_STATIC, 15, 56, 210, 10
+    LTEXT "Fullscreen Hotkey", IDC_STATIC, 10, 15, 160, 8
+    EDITTEXT IDC_HOTKEY_DISPLAY, 10, 25, 160, 18, ES_READONLY | WS_BORDER
+    LTEXT "Click and press any key...", IDC_STATIC, 10, 46, 160, 8
     
     // Region hotkey
-    LTEXT "Region Hotkey", IDC_STATIC, 15, 80, 210, 10
-    EDITTEXT IDC_HOTKEY_REGION_DISPLAY, 15, 92, 210, 20, ES_READONLY | WS_BORDER
-    LTEXT "Click and press any key...", IDC_STATIC, 15, 116, 210, 10
+    LTEXT "Region Hotkey", IDC_STATIC, 10, 62, 160, 8
+    EDITTEXT IDC_HOTKEY_REGION_DISPLAY, 10, 72, 160, 18, ES_READONLY | WS_BORDER
+    LTEXT "Click and press any key...", IDC_STATIC, 10, 93, 160, 8
     
     // Auto-start
-    CONTROL "Start with Windows", IDC_AUTOSTART, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 15, 140, 210, 14
+    CONTROL "Start with Windows", IDC_AUTOSTART, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 10, 108, 160, 12
     
     // Buttons
-    DEFPUSHBUTTON "Save", IDOK, 95, 165, 60, 26
-    PUSHBUTTON "Cancel", IDCANCEL, 165, 165, 60, 26
+    DEFPUSHBUTTON "Save", IDOK, 50, 125, 55, 20
+    PUSHBUTTON "Cancel", IDCANCEL, 115, 125, 55, 20
 END

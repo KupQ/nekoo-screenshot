@@ -1,9 +1,9 @@
 #include "settings.h"
 #include <windows.h>
 
-#define REGISTRY_KEY L"Software\\Nekoo\\Screenshot"
+#define REGISTRY_KEY L"Software\\Seko\\Screenshot"
 #define AUTOSTART_KEY L"Software\\Microsoft\\Windows\\CurrentVersion\\Run"
-#define AUTOSTART_VALUE L"NekooScreenshot"
+#define AUTOSTART_VALUE L"Seko"
 
 AppSettings LoadSettings() {
     AppSettings settings;

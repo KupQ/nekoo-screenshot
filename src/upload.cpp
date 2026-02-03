@@ -91,6 +91,19 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
                     if (urlEnd != std::string::npos) {
                         std::string urlStr = response.substr(urlStart, urlEnd - urlStart);
                         url = std::wstring(urlStr.begin(), urlStr.end());
+                        
+                        // Copy URL to clipboard
+                        if (OpenClipboard(NULL)) {
+                            EmptyClipboard();
+                            size_t len = (url.length() + 1) * sizeof(wchar_t);
+                            HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, len);
+                            if (hMem) {
+                                memcpy(GlobalLock(hMem), url.c_str(), len);
+                                GlobalUnlock(hMem);
+                                SetClipboardData(CF_UNICODETEXT, hMem);
+                            }
+                            CloseClipboard();
+                        }
                     }
                 }
             }

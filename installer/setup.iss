@@ -1,11 +1,11 @@
-; Nekoo Screenshot Tool Installer Script
+; Seko Screenshot Tool Installer Script
 ; Inno Setup 6.x
 
-#define MyAppName "Nekoo Screenshot"
+#define MyAppName "Seko"
 #define MyAppVersion "3.0.0"
-#define MyAppPublisher "Nekoo Team"
+#define MyAppPublisher "Seko"
 #define MyAppURL "https://nekoo.ru"
-#define MyAppExeName "nekoo-screenshot.exe"
+#define MyAppExeName "seko.exe"
 
 [Setup]
 AppId={{8B5CF6A0-1234-5678-9ABC-DEF012345678}
@@ -20,7 +20,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=..\LICENSE
 OutputDir=.
-OutputBaseFilename=nekoo-screenshot-setup
+OutputBaseFilename=seko-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -60,7 +60,7 @@ begin
   begin
     if MsgBox('Nekoo Screenshot is currently running. Setup must close it to continue. Close now?', mbConfirmation, MB_YESNO) = IDYES then
     begin
-      Exec('taskkill', '/F /IM nekoo-screenshot.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('taskkill', '/F /IM seko.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     end
     else
     begin

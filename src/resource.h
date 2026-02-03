@@ -2,3 +2,4 @@
 #define IDD_SETTINGS 102
 #define IDC_HOTKEY 1003
 #define IDC_AUTOSTART 1004
+#define IDC_STATIC -1

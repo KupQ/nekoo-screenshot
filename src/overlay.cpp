@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <gdiplus.h>
+#include <stdio.h>
 #include "overlay.h"
 
 #pragma comment(lib, "gdiplus.lib")

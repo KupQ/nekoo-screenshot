@@ -137,12 +137,7 @@ void DoCapture() {
     std::wcout << L"📋 Copied!\n";
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    AllocConsole();
-    FILE* fp;
-    freopen_s(&fp, "CONOUT$", "w", stdout);
-    freopen_s(&fp, "CONOUT$", "w", stderr);
-    
+int main() {
     GdiplusStartupInput gsi;
     ULONG_PTR token;
     GdiplusStartup(&token, &gsi, NULL);

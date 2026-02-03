@@ -1,4 +1,4 @@
-name: Build Windows
+name: Build and Release
 
 on:
   push:
@@ -23,16 +23,61 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
       
-      - name: Upload Artifact
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+          
+      - name: Create Installer
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss
+        
+      - name: Upload Executable
         uses: actions/upload-artifact@v4
         with:
-          name: nekoo-screenshot-windows
+          name: nekoo-screenshot-exe
           path: build/Release/nekoo-screenshot.exe
+      
+      - name: Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: nekoo-screenshot-installer
+          path: installer/nekoo-screenshot-setup.exe
       
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: build/Release/nekoo-screenshot.exe
+          files: |
+            build/Release/nekoo-screenshot.exe
+            installer/nekoo-screenshot-setup.exe
+          body: |
+            ## Nekoo Screenshot Tool v${{ github.ref_name }}
+            
+            **Windows Screenshot Tool with GUI**
+            
+            ### Features
+            - 🎯 System tray application (no console)
+            - ⌨️ Hotkeys: Ctrl+Shift+S (fullscreen), Ctrl+Shift+R (region)
+            - 🖼️ Region selection with visual overlay
+            - ☁️ Auto-upload to nekoo.ru
+            - 📋 Toast notification with copy button
+            - 🎨 Nekoo dark theme design
+            
+            ### Download
+            - **Installer (Recommended)**: `nekoo-screenshot-setup.exe`
+            - **Portable**: `nekoo-screenshot.exe`
+            
+            ### Installation
+            1. Download `nekoo-screenshot-setup.exe`
+            2. Run the installer
+            3. Choose "Start with Windows" option
+            4. Click Finish
+            
+            ### Usage
+            - Press **Ctrl+Shift+S** for fullscreen capture
+            - Press **Ctrl+Shift+R** for region selection
+            - Right-click tray icon for menu
+            
+            Made for [nekoo.ru](https://nekoo.ru)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

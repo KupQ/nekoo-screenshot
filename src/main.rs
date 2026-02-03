@@ -1,117 +1,61 @@
 use arboard::Clipboard;
-use rdev::{listen, Event, EventType, Key};
-use std::sync::mpsc::{channel, Sender};
-use std::thread;
+use std::env;
 
 mod capture;
 mod upload;
-mod settings;
 
 fn main() {
-    println!("Nekoo Screenshot Tool v1.0.0");
-    println!("Starting...");
-    println!();
-    println!("Hotkeys:");
-    println!("  PrintScreen - Capture fullscreen and upload");
-    println!("  Ctrl+Shift+S - Capture region (currently fullscreen)");
-    println!();
-    println!("Press Ctrl+C to exit");
+    println!("Nekoo Screenshot Tool v1.0.2");
     println!();
 
-    // Create channel for hotkey events
-    let (tx, rx) = channel();
-
-    // Spawn hotkey listener thread
-    thread::spawn(move || {
-        listen_for_hotkeys(tx);
-    });
-
-    // Main event loop
-    loop {
-        if let Ok(capture_mode) = rx.recv() {
-            handle_capture(capture_mode);
-        }
+    let args: Vec<String> = env::args().collect();
+    
+    if args.len() > 1 && args[1] == "--help" {
+        print_help();
+        return;
     }
-}
 
-#[derive(Clone, Copy, Debug)]
-enum CaptureMode {
-    Fullscreen,
-    Region,
-}
+    println!("📸 Capturing screenshot...");
 
-fn listen_for_hotkeys(tx: Sender<CaptureMode>) {
-    let mut ctrl_pressed = false;
-    let mut shift_pressed = false;
-
-    let callback = move |event: Event| {
-        match event.event_type {
-            EventType::KeyPress(key) => {
-                match key {
-                    Key::ControlLeft | Key::ControlRight => ctrl_pressed = true,
-                    Key::ShiftLeft | Key::ShiftRight => shift_pressed = true,
-                    Key::PrintScreen => {
-                        let _ = tx.send(CaptureMode::Fullscreen);
-                    }
-                    Key::KeyS if ctrl_pressed && shift_pressed => {
-                        let _ = tx.send(CaptureMode::Region);
-                    }
-                    _ => {}
-                }
-            }
-            EventType::KeyRelease(key) => {
-                match key {
-                    Key::ControlLeft | Key::ControlRight => ctrl_pressed = false,
-                    Key::ShiftLeft | Key::ShiftRight => shift_pressed = false,
-                    _ => {}
-                }
-            }
-            _ => {}
+    // Capture fullscreen
+    let image_data = match capture::capture_fullscreen() {
+        Ok(data) => data,
+        Err(e) => {
+            eprintln!("❌ Capture failed: {}", e);
+            std::process::exit(1);
         }
     };
 
-    if let Err(error) = listen(callback) {
-        eprintln!("Error listening for hotkeys: {:?}", error);
+    println!("✅ Screenshot captured ({} bytes)", image_data.len());
+    println!("⬆️  Uploading to nekoo.ru...");
+
+    match upload::upload_to_nekoo(&image_data) {
+        Ok(url) => {
+            println!("✅ Upload successful!");
+            println!();
+            println!("🔗 {}", url);
+            println!();
+
+            // Copy to clipboard
+            if let Ok(mut clipboard) = Clipboard::new() {
+                if clipboard.set_text(&url).is_ok() {
+                    println!("📋 Link copied to clipboard!");
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("❌ Upload failed: {}", e);
+            std::process::exit(1);
+        }
     }
 }
 
-fn handle_capture(mode: CaptureMode) {
-    thread::spawn(move || {
-        println!("📸 Capturing {:?}...", mode);
-
-        // Capture screenshot
-        let image_data = match mode {
-            CaptureMode::Fullscreen => capture::capture_fullscreen(),
-            CaptureMode::Region => capture::capture_region(),
-        };
-
-        let image_data = match image_data {
-            Ok(data) => data,
-            Err(e) => {
-                eprintln!("❌ Capture failed: {}", e);
-                return;
-            }
-        };
-
-        println!("⬆️  Uploading to nekoo.ru...");
-
-        match upload::upload_to_nekoo(&image_data) {
-            Ok(url) => {
-                println!("✅ Upload successful!");
-                println!("🔗 {}", url);
-
-                // Copy to clipboard
-                if let Ok(mut clipboard) = Clipboard::new() {
-                    let _ = clipboard.set_text(&url);
-                    println!("📋 Link copied to clipboard!");
-                } else {
-                    println!("⚠️  Could not copy to clipboard");
-                }
-            }
-            Err(e) => {
-                eprintln!("❌ Upload failed: {}", e);
-            }
-        }
-        println!();
-    });
+fn print_help() {
+    println!("Usage: nekoo-screenshot");
+    println!();
+    println!("Captures fullscreen screenshot and uploads to nekoo.ru");
+    println!("The link is automatically copied to your clipboard.");
+    println!();
+    println!("Options:");
+    println!("  --help    Show this help message");
 }

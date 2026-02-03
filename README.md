@@ -1,27 +1,35 @@
 # Nekoo Screenshot Tool
 
-**Fast screenshot tool that uploads to nekoo.ru**
+**Fast screenshot tool with hotkeys that uploads to nekoo.ru**
 
 ## Installation
 
-Download the latest release for your platform:
+Download the latest release:
 - **Windows:** [nekoo-screenshot-windows.exe](https://github.com/KupQ/nekoo-screenshot/releases/latest)
 - **macOS:** [nekoo-screenshot-macos](https://github.com/KupQ/nekoo-screenshot/releases/latest)
 
 ## Usage
 
-Simply run the executable:
+Run the executable - it will stay in the background listening for hotkeys:
+
 ```bash
 nekoo-screenshot
 ```
 
-It will:
-1. Capture your screen
-2. Upload to nekoo.ru
-3. Copy the link to your clipboard
-4. Print the link to console
+### Hotkeys
 
-That's it!
+- **PrintScreen** - Capture fullscreen and upload
+- **Ctrl+Shift+S** - Capture region and upload (currently fullscreen)
+
+The link is automatically copied to your clipboard!
+
+## Features
+
+- ✅ Global hotkey support (PrintScreen, Ctrl+Shift+S)
+- ✅ Instant upload to nekoo.ru
+- ✅ Auto-copy link to clipboard
+- ✅ Cross-platform (Windows & macOS)
+- ✅ Lightweight background process
 
 ## Building from Source
 
@@ -32,28 +40,6 @@ cargo build --release
 ```
 
 Binary will be in `target/release/`
-
-## Features
-
-- ✅ Fast fullscreen capture
-- ✅ Instant upload to nekoo.ru
-- ✅ Auto-copy link to clipboard
-- ✅ Cross-platform (Windows & macOS)
-- ✅ No dependencies or installation required
-
-## Tip
-
-Create a keyboard shortcut to run this tool for quick screenshots!
-
-**Windows:**
-1. Right-click the .exe → Create shortcut
-2. Right-click shortcut → Properties
-3. Set "Shortcut key" to your preferred key (e.g., Ctrl+Alt+S)
-
-**macOS:**
-1. System Preferences → Keyboard → Shortcuts
-2. App Shortcuts → Add (+)
-3. Select the app and assign a shortcut
 
 ## License
 

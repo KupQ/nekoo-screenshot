@@ -1,6 +1,6 @@
 [package]
 name = "nekoo-screenshot"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 authors = ["Nekoo Team"]
 description = "Fast screenshot tool that uploads to nekoo.ru"
@@ -12,6 +12,7 @@ screenshots = "0.8"
 reqwest = { version = "0.11", features = ["multipart", "blocking"], default-features = false, features = ["rustls-tls"] }
 arboard = "3.3"
 image = "0.24"
+device_query = "2.1"
 
 [[bin]]
 name = "nekoo-screenshot"

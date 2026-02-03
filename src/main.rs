@@ -1,18 +1,32 @@
+// Platform-specific imports
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use arboard::Clipboard;
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, hotkey::{Code, HotKey, Modifiers}};
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use notify_rust::Notification;
-use std::sync::mpsc;
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::thread;
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use tray_icon::{
     menu::{Menu, MenuEvent, MenuItem},
     TrayIconBuilder,
 };
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 use winit::event_loop::{ControlFlow, EventLoopBuilder};
 
 mod capture;
 mod upload;
 mod settings;
 
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+fn main() {
+    eprintln!("This application is only supported on Windows and macOS");
+    eprintln!("Please build on the target platform");
+    std::process::exit(1);
+}
+
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn main() {
     println!("Nekoo Screenshot Tool v1.0.0");
     println!("Starting...");
@@ -89,12 +103,14 @@ fn main() {
     }).expect("Event loop failed");
 }
 
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 #[derive(Clone, Copy)]
 enum CaptureMode {
     Fullscreen,
     Region,
 }
 
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn handle_capture(mode: CaptureMode) {
     thread::spawn(move || {
         // Show notification

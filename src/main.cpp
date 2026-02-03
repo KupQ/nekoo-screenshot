@@ -13,7 +13,6 @@
 #include "settings.h"
 
 #pragma comment(lib, "comctl32.lib")
-
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "winhttp.lib")
 #pragma comment(lib, "shell32.lib")
@@ -39,8 +38,7 @@ std::vector<BYTE> CaptureRegion(const RECT& rect);
 std::vector<BYTE> CaptureFullscreen();
 void RegisterHotkeys();
 void UnregisterHotkeys();
-UINT ModifiersFromHotkey(WORD hotkey);
-UINT KeyFromHotkey(WORD hotkey);
+std::wstring GetKeyName(UINT vk, UINT mods);
 
 // System tray menu IDs
 #define IDM_CAPTURE_FULL 1001
@@ -276,18 +274,6 @@ void ShowSettingsDialog() {
     DialogBox(g_hInst, MAKEINTRESOURCE(IDD_SETTINGS), g_hwndMain, SettingsDlgProc);
 }
 
-UINT ModifiersFromHotkey(WORD hotkey) {
-    UINT mods = 0;
-    if (HIBYTE(hotkey) & HOTKEYF_CONTROL) mods |= MOD_CONTROL;
-    if (HIBYTE(hotkey) & HOTKEYF_SHIFT) mods |= MOD_SHIFT;
-    if (HIBYTE(hotkey) & HOTKEYF_ALT) mods |= MOD_ALT;
-    return mods;
-}
-
-UINT KeyFromHotkey(WORD hotkey) {
-    return LOBYTE(hotkey);
-}
-
 void RegisterHotkeys() {
     RegisterHotKey(g_hwndMain, g_hotkeyId, g_settings.fullscreenModifiers, g_settings.fullscreenKey);
     RegisterHotKey(g_hwndMain, g_hotkeyRegionId, g_settings.regionModifiers, g_settings.regionKey);
@@ -298,32 +284,124 @@ void UnregisterHotkeys() {
     UnregisterHotKey(g_hwndMain, g_hotkeyRegionId);
 }
 
+std::wstring GetKeyName(UINT vk, UINT mods) {
+    std::wstring result;
+    
+    if (mods & MOD_CONTROL) result += L"Ctrl+";
+    if (mods & MOD_SHIFT) result += L"Shift+";
+    if (mods & MOD_ALT) result += L"Alt+";
+    if (mods & MOD_WIN) result += L"Win+";
+    
+    wchar_t keyName[50] = {0};
+    UINT scanCode = MapVirtualKey(vk, MAPVK_VK_TO_VSC);
+    
+    // Special keys
+    switch (vk) {
+        case VK_SNAPSHOT: result += L"PrintScreen"; return result;
+        case VK_PAUSE: result += L"Pause"; return result;
+        case VK_INSERT: result += L"Insert"; return result;
+        case VK_DELETE: result += L"Delete"; return result;
+        case VK_HOME: result += L"Home"; return result;
+        case VK_END: result += L"End"; return result;
+        case VK_PRIOR: result += L"PageUp"; return result;
+        case VK_NEXT: result += L"PageDown"; return result;
+        case VK_ESCAPE: result += L"Esc"; return result;
+        case VK_SPACE: result += L"Space"; return result;
+        case VK_RETURN: result += L"Enter"; return result;
+        case VK_BACK: result += L"Backspace"; return result;
+        case VK_TAB: result += L"Tab"; return result;
+    }
+    
+    // F keys
+    if (vk >= VK_F1 && vk <= VK_F24) {
+        swprintf_s(keyName, L"F%d", vk - VK_F1 + 1);
+        result += keyName;
+        return result;
+    }
+    
+    // Get key name from system
+    if (GetKeyNameText(scanCode << 16, keyName, 50)) {
+        result += keyName;
+    } else {
+        swprintf_s(keyName, L"Key%d", vk);
+        result += keyName;
+    }
+    
+    return result;
+}
+
+LRESULT CALLBACK HotkeyEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
+    static UINT* pVK = (UINT*)dwRefData;
+    static UINT* pMods = pVK + 1;
+    
+    switch (msg) {
+        case WM_KEYDOWN:
+        case WM_SYSKEYDOWN: {
+            UINT vk = (UINT)wParam;
+            UINT mods = 0;
+            
+            // Capture modifiers
+            if (GetKeyState(VK_CONTROL) & 0x8000) mods |= MOD_CONTROL;
+            if (GetKeyState(VK_SHIFT) & 0x8000) mods |= MOD_SHIFT;
+            if (GetKeyState(VK_MENU) & 0x8000) mods |= MOD_ALT;
+            
+            // Don't capture modifier keys alone
+            if (vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU || vk == VK_LWIN || vk == VK_RWIN) {
+                return 0;
+            }
+            
+            *pVK = vk;
+            *pMods = mods;
+            
+            SetWindowText(hwnd, GetKeyName(vk, mods).c_str());
+            return 0;
+        }
+        
+        case WM_SETFOCUS:
+            SetWindowText(hwnd, L"Press a key...");
+            return 0;
+        
+        case WM_KILLFOCUS:
+            if (*pVK != 0) {
+                SetWindowText(hwnd, GetKeyName(*pVK, *pMods).c_str());
+            }
+            return 0;
+    }
+    
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
+static UINT g_tempFullscreenVK = 0;
+static UINT g_tempFullscreenMods = 0;
+static UINT g_tempRegionVK = 0;
+static UINT g_tempRegionMods = 0;
+
 INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_INITDIALOG: {
-            // Allow hotkeys without modifiers (like PrintScreen alone)
-            SendDlgItemMessage(hDlg, IDC_HOTKEY, HKM_SETRULES, 
-                HKCOMB_NONE | HKCOMB_S, 
-                MAKELPARAM(HOTKEYF_CONTROL | HOTKEYF_ALT, 0));
-            SendDlgItemMessage(hDlg, IDC_HOTKEY_REGION, HKM_SETRULES, 
-                HKCOMB_NONE | HKCOMB_S, 
-                MAKELPARAM(HOTKEYF_CONTROL | HOTKEYF_ALT, 0));
+            // Initialize temp values
+            g_tempFullscreenVK = g_settings.fullscreenKey;
+            g_tempFullscreenMods = g_settings.fullscreenModifiers;
+            g_tempRegionVK = g_settings.regionKey;
+            g_tempRegionMods = g_settings.regionModifiers;
             
-            // Set fullscreen hotkey
-            BYTE mods = 0;
-            if (g_settings.fullscreenModifiers & MOD_CONTROL) mods |= HOTKEYF_CONTROL;
-            if (g_settings.fullscreenModifiers & MOD_SHIFT) mods |= HOTKEYF_SHIFT;
-            if (g_settings.fullscreenModifiers & MOD_ALT) mods |= HOTKEYF_ALT;
-            SendDlgItemMessage(hDlg, IDC_HOTKEY, HKM_SETHOTKEY, 
-                MAKEWORD(g_settings.fullscreenKey, mods), 0);
+            // Subclass edit controls for custom hotkey capture
+            HWND hFullscreen = GetDlgItem(hDlg, IDC_HOTKEY_DISPLAY);
+            HWND hRegion = GetDlgItem(hDlg, IDC_HOTKEY_REGION_DISPLAY);
             
-            // Set region hotkey
-            mods = 0;
-            if (g_settings.regionModifiers & MOD_CONTROL) mods |= HOTKEYF_CONTROL;
-            if (g_settings.regionModifiers & MOD_SHIFT) mods |= HOTKEYF_SHIFT;
-            if (g_settings.regionModifiers & MOD_ALT) mods |= HOTKEYF_ALT;
-            SendDlgItemMessage(hDlg, IDC_HOTKEY_REGION, HKM_SETHOTKEY, 
-                MAKEWORD(g_settings.regionKey, mods), 0);
+            static UINT fullscreenData[2];
+            static UINT regionData[2];
+            fullscreenData[0] = g_tempFullscreenVK;
+            fullscreenData[1] = g_tempFullscreenMods;
+            regionData[0] = g_tempRegionVK;
+            regionData[1] = g_tempRegionMods;
+            
+            SetWindowSubclass(hFullscreen, HotkeyEditProc, 1, (DWORD_PTR)fullscreenData);
+            SetWindowSubclass(hRegion, HotkeyEditProc, 2, (DWORD_PTR)regionData);
+            
+            // Display current hotkeys
+            SetWindowText(hFullscreen, GetKeyName(g_settings.fullscreenKey, g_settings.fullscreenModifiers).c_str());
+            SetWindowText(hRegion, GetKeyName(g_settings.regionKey, g_settings.regionModifiers).c_str());
             
             // Set auto-start checkbox
             CheckDlgButton(hDlg, IDC_AUTOSTART, g_settings.autoStart ? BST_CHECKED : BST_UNCHECKED);
@@ -331,13 +409,12 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
         }
         
         case WM_CTLCOLORDLG:
-            // Clean white background
             return (LRESULT)GetStockObject(WHITE_BRUSH);
         
         case WM_CTLCOLORSTATIC: {
             HDC hdcStatic = (HDC)wParam;
-            SetTextColor(hdcStatic, RGB(50, 50, 50)); // Dark gray text
-            SetBkColor(hdcStatic, RGB(255, 255, 255)); // White background
+            SetTextColor(hdcStatic, RGB(50, 50, 50));
+            SetBkColor(hdcStatic, RGB(255, 255, 255));
             return (LRESULT)GetStockObject(WHITE_BRUSH);
         }
         
@@ -351,15 +428,25 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
                 case IDOK: {
-                    // Get fullscreen hotkey
-                    WORD hotkey = (WORD)SendDlgItemMessage(hDlg, IDC_HOTKEY, HKM_GETHOTKEY, 0, 0);
-                    g_settings.fullscreenModifiers = ModifiersFromHotkey(hotkey);
-                    g_settings.fullscreenKey = KeyFromHotkey(hotkey);
+                    // Get captured hotkeys from temp variables
+                    HWND hFullscreen = GetDlgItem(hDlg, IDC_HOTKEY_DISPLAY);
+                    HWND hRegion = GetDlgItem(hDlg, IDC_HOTKEY_REGION_DISPLAY);
                     
-                    // Get region hotkey
-                    hotkey = (WORD)SendDlgItemMessage(hDlg, IDC_HOTKEY_REGION, HKM_GETHOTKEY, 0, 0);
-                    g_settings.regionModifiers = ModifiersFromHotkey(hotkey);
-                    g_settings.regionKey = KeyFromHotkey(hotkey);
+                    // Retrieve from subclass data
+                    UINT fullscreenData[2];
+                    UINT regionData[2];
+                    GetWindowSubclass(hFullscreen, HotkeyEditProc, 1, (DWORD_PTR*)&fullscreenData);
+                    GetWindowSubclass(hRegion, HotkeyEditProc, 2, (DWORD_PTR*)&regionData);
+                    
+                    if (fullscreenData[0] != 0) {
+                        g_settings.fullscreenKey = fullscreenData[0];
+                        g_settings.fullscreenModifiers = fullscreenData[1];
+                    }
+                    
+                    if (regionData[0] != 0) {
+                        g_settings.regionKey = regionData[0];
+                        g_settings.regionModifiers = regionData[1];
+                    }
                     
                     // Get auto-start
                     g_settings.autoStart = (IsDlgButtonChecked(hDlg, IDC_AUTOSTART) == BST_CHECKED);
@@ -383,4 +470,5 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
     }
     return FALSE;
 }
+
 

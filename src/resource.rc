@@ -24,3 +24,7 @@ BEGIN
     DEFPUSHBUTTON "Save", IDOK, 50, 125, 55, 20
     PUSHBUTTON "Cancel", IDCANCEL, 115, 125, 55, 20
 END
+
+// Application icon
+IDI_APPICON ICON "../icon.ico"
+

@@ -1,6 +1,6 @@
 [package]
 name = "nekoo-screenshot"
-version = "1.0.4"
+version = "1.0.5"
 edition = "2021"
 authors = ["Nekoo Team"]
 description = "Fast screenshot tool that uploads to nekoo.ru"
@@ -9,7 +9,7 @@ repository = "https://github.com/KupQ/nekoo-screenshot"
 
 [dependencies]
 screenshots = "0.8"
-reqwest = { version = "0.11", features = ["multipart", "blocking"], default-features = false, features = ["rustls-tls"] }
+reqwest = { version = "0.11", default-features = false, features = ["multipart", "blocking", "rustls-tls"] }
 arboard = "3.3"
 image = "0.24"
 

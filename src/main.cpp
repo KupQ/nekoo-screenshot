@@ -252,15 +252,20 @@ void CaptureScreenshot(bool useRegion) {
         return;
     }
     
+    // Show "Uploading..." toast immediately
+    ShowUploadingToast();
+    
     // Upload to nekoo.ru
     std::wstring url = UploadToNekoo(imageData);
     
     if (url.empty()) {
+        CloseToast();
         MessageBox(NULL, L"Failed to upload screenshot", L"Error", MB_OK | MB_ICONERROR);
         return;
     }
     
-    ShowToast(url);
+    // Update toast with URL
+    UpdateToastWithUrl(url);
 }
 
 void ShowToast(const std::wstring& url) {

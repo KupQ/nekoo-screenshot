@@ -4,7 +4,10 @@
 #include <winhttp.h>
 #include <string>
 #include <fstream>
+#include <vector>
 #include "resource.h"
+#include "upload.h"
+#include "overlay.h"
 
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "winhttp.lib")
@@ -18,17 +21,22 @@ NOTIFYICONDATA g_nid;
 HWND g_hwndMain;
 ULONG_PTR g_gdiplusToken;
 int g_hotkeyId = 1;
+int g_hotkeyRegionId = 2;
 
 // Forward declarations
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK SettingsDlgProc(HWND, UINT, WPARAM, LPARAM);
 void ShowSettingsDialog();
-void CaptureScreenshot();
+void CaptureScreenshot(bool useRegion = false);
 void ShowToast(const std::wstring& url);
+std::vector<BYTE> CaptureRegion(const RECT& rect);
+std::vector<BYTE> CaptureFullscreen();
 
 // System tray menu IDs
-#define IDM_SETTINGS 1001
-#define IDM_EXIT 1002
+#define IDM_CAPTURE_FULL 1001
+#define IDM_CAPTURE_REGION 1002
+#define IDM_SETTINGS 1003
+#define IDM_EXIT 1004
 #define WM_TRAYICON (WM_USER + 1)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
@@ -61,8 +69,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     wcscpy_s(g_nid.szTip, L"Nekoo Screenshot - Ctrl+Shift+S");
     Shell_NotifyIcon(NIM_ADD, &g_nid);
     
-    // Register global hotkey (Ctrl+Shift+S)
-    RegisterHotKey(g_hwndMain, g_hotkeyId, MOD_CONTROL | MOD_SHIFT, 'S');
+    // Register global hotkeys
+    RegisterHotKey(g_hwndMain, g_hotkeyId, MOD_CONTROL | MOD_SHIFT, 'S'); // Fullscreen
+    RegisterHotKey(g_hwndMain, g_hotkeyRegionId, MOD_CONTROL | MOD_SHIFT, 'R'); // Region
     
     // Message loop
     MSG msg;
@@ -74,6 +83,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     // Cleanup
     Shell_NotifyIcon(NIM_DELETE, &g_nid);
     UnregisterHotKey(g_hwndMain, g_hotkeyId);
+    UnregisterHotKey(g_hwndMain, g_hotkeyRegionId);
     GdiplusShutdown(g_gdiplusToken);
     
     return (int)msg.wParam;
@@ -83,7 +93,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_HOTKEY:
             if (wParam == g_hotkeyId) {
-                CaptureScreenshot();
+                CaptureScreenshot(false);
+            } else if (wParam == g_hotkeyRegionId) {
+                CaptureScreenshot(true);
             }
             return 0;
             
@@ -93,6 +105,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 GetCursorPos(&pt);
                 
                 HMENU hMenu = CreatePopupMenu();
+                AppendMenu(hMenu, MF_STRING, IDM_CAPTURE_FULL, L"Capture Fullscreen (Ctrl+Shift+S)");
+                AppendMenu(hMenu, MF_STRING, IDM_CAPTURE_REGION, L"Capture Region (Ctrl+Shift+R)");
+                AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenu(hMenu, MF_STRING, IDM_SETTINGS, L"Settings");
                 AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenu(hMenu, MF_STRING, IDM_EXIT, L"Exit");
@@ -106,6 +121,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
+                case IDM_CAPTURE_FULL:
+                    CaptureScreenshot(false);
+                    break;
+                case IDM_CAPTURE_REGION:
+                    CaptureScreenshot(true);
+                    break;
                 case IDM_SETTINGS:
                     ShowSettingsDialog();
                     break;
@@ -122,19 +143,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-void CaptureScreenshot() {
-    // Get screen dimensions
+std::vector<BYTE> CaptureFullscreen() {
     int w = GetSystemMetrics(SM_CXSCREEN);
     int h = GetSystemMetrics(SM_CYSCREEN);
     
-    // Capture screen
     HDC hScreen = GetDC(NULL);
     HDC hDC = CreateCompatibleDC(hScreen);
     HBITMAP hBmp = CreateCompatibleBitmap(hScreen, w, h);
-    SelectObject(hDC, hBmp);
+    HGDIOBJ hOld = SelectObject(hDC, hBmp);
     BitBlt(hDC, 0, 0, w, h, hScreen, 0, 0, SRCCOPY);
     
-    // Convert to PNG
     Bitmap* bmp = new Bitmap(hBmp, NULL);
     IStream* stream = NULL;
     CreateStreamOnHGlobal(NULL, TRUE, &stream);
@@ -143,7 +161,6 @@ void CaptureScreenshot() {
     CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &clsid);
     bmp->Save(stream, &clsid);
     
-    // Get data
     STATSTG stat;
     stream->Stat(&stat, STATFLAG_DEFAULT);
     ULONG size = (ULONG)stat.cbSize.QuadPart;
@@ -156,12 +173,84 @@ void CaptureScreenshot() {
     stream->Release();
     
     delete bmp;
+    SelectObject(hDC, hOld);
     DeleteObject(hBmp);
     DeleteDC(hDC);
     ReleaseDC(NULL, hScreen);
     
-    // Upload (simplified for now)
-    ShowToast(L"https://nekoo.ru/test123");
+    return data;
+}
+
+std::vector<BYTE> CaptureRegion(const RECT& rect) {
+    int w = rect.right - rect.left;
+    int h = rect.bottom - rect.top;
+    
+    if (w <= 0 || h <= 0) return std::vector<BYTE>();
+    
+    HDC hScreen = GetDC(NULL);
+    HDC hDC = CreateCompatibleDC(hScreen);
+    HBITMAP hBmp = CreateCompatibleBitmap(hScreen, w, h);
+    HGDIOBJ hOld = SelectObject(hDC, hBmp);
+    BitBlt(hDC, 0, 0, w, h, hScreen, rect.left, rect.top, SRCCOPY);
+    
+    Bitmap* bmp = new Bitmap(hBmp, NULL);
+    IStream* stream = NULL;
+    CreateStreamOnHGlobal(NULL, TRUE, &stream);
+    
+    CLSID clsid;
+    CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &clsid);
+    bmp->Save(stream, &clsid);
+    
+    STATSTG stat;
+    stream->Stat(&stat, STATFLAG_DEFAULT);
+    ULONG size = (ULONG)stat.cbSize.QuadPart;
+    
+    std::vector<BYTE> data(size);
+    LARGE_INTEGER pos = {0};
+    stream->Seek(pos, STREAM_SEEK_SET, NULL);
+    ULONG bytesRead;
+    stream->Read(data.data(), size, &bytesRead);
+    stream->Release();
+    
+    delete bmp;
+    SelectObject(hDC, hOld);
+    DeleteObject(hBmp);
+    DeleteDC(hDC);
+    ReleaseDC(NULL, hScreen);
+    
+    return data;
+}
+
+void CaptureScreenshot(bool useRegion) {
+    std::vector<BYTE> imageData;
+    
+    if (useRegion) {
+        RECT rect = {0};
+        ShowOverlay(g_hwndMain, &rect);
+        
+        if (rect.right == 0 && rect.bottom == 0) {
+            return; // Cancelled
+        }
+        
+        imageData = CaptureRegion(rect);
+    } else {
+        imageData = CaptureFullscreen();
+    }
+    
+    if (imageData.empty()) {
+        MessageBox(NULL, L"Failed to capture screenshot", L"Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+    
+    // Upload to nekoo.ru
+    std::wstring url = UploadToNekoo(imageData);
+    
+    if (url.empty()) {
+        MessageBox(NULL, L"Failed to upload screenshot", L"Error", MB_OK | MB_ICONERROR);
+        return;
+    }
+    
+    ShowToast(url);
 }
 
 void ShowToast(const std::wstring& url) {

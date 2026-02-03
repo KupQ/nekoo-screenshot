@@ -258,10 +258,32 @@ void ShowToast(const std::wstring& url) {
 }
 
 void ShowSettingsDialog() {
-    MessageBox(NULL, L"Settings dialog coming soon!", L"Settings", MB_OK);
+    DialogBox(g_hInst, MAKEINTRESOURCE(IDD_SETTINGS), g_hwndMain, SettingsDlgProc);
 }
 
 INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
-    // Will be implemented
+    switch (msg) {
+        case WM_INITDIALOG:
+            // Set current hotkey
+            SendDlgItemMessage(hDlg, IDC_HOTKEY, HKM_SETHOTKEY, 
+                MAKEWORD('S', HOTKEYF_CONTROL | HOTKEYF_SHIFT), 0);
+            
+            // Check auto-start checkbox
+            CheckDlgButton(hDlg, IDC_AUTOSTART, BST_UNCHECKED);
+            return TRUE;
+            
+        case WM_COMMAND:
+            switch (LOWORD(wParam)) {
+                case IDOK:
+                    // TODO: Save settings
+                    EndDialog(hDlg, IDOK);
+                    return TRUE;
+                    
+                case IDCANCEL:
+                    EndDialog(hDlg, IDCANCEL);
+                    return TRUE;
+            }
+            break;
+    }
     return FALSE;
 }

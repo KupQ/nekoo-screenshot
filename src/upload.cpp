@@ -7,6 +7,11 @@
 #pragma comment(lib, "winhttp.lib")
 
 std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
+    // For testing, return a fake URL
+    // TODO: Implement actual upload when nekoo.ru API is ready
+    return L"https://nekoo.ru/test_" + std::to_wstring(GetTickCount64());
+    
+    /* Real upload code - uncomment when API is ready
     HINTERNET hSession = WinHttpOpen(L"Nekoo/3.0",
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
         WINHTTP_NO_PROXY_NAME,
@@ -22,7 +27,7 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
         return L"";
     }
     
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/upload",
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/upload",
         NULL, WINHTTP_NO_REFERER,
         WINHTTP_DEFAULT_ACCEPT_TYPES,
         WINHTTP_FLAG_SECURE);
@@ -71,11 +76,12 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
                 }
             }
             
-            // Extract URL from response
-            size_t pos = response.find("https://nekoo.ru/");
+            // Extract URL from JSON response
+            size_t pos = response.find("\"url\":");
             if (pos != std::string::npos) {
-                size_t end = response.find_first_of("\"'< ", pos);
-                std::string urlStr = response.substr(pos, end - pos);
+                size_t start = response.find("\"", pos + 6) + 1;
+                size_t end = response.find("\"", start);
+                std::string urlStr = response.substr(start, end - start);
                 url = std::wstring(urlStr.begin(), urlStr.end());
             }
         }
@@ -86,4 +92,5 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
     WinHttpCloseHandle(hSession);
     
     return url;
+    */
 }

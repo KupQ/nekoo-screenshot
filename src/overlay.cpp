@@ -12,8 +12,10 @@ static HWND g_hwndOverlay = NULL;
 static POINT g_ptStart = {0};
 static POINT g_ptEnd = {0};
 static bool g_bSelecting = false;
+static bool g_bDragging = false;
 static RECT g_selectedRect = {0};
 static bool g_bCancelled = false;
+static bool g_bDone = false;
 
 LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -33,7 +35,9 @@ void ShowOverlay(HWND hwndParent, RECT* pRect) {
     
     // Reset state
     g_bSelecting = false;
+    g_bDragging = false;
     g_bCancelled = false;
+    g_bDone = false;
     g_ptStart = {0};
     g_ptEnd = {0};
     
@@ -43,34 +47,28 @@ void ShowOverlay(HWND hwndParent, RECT* pRect) {
     
     // Create fullscreen overlay
     g_hwndOverlay = CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TRANSPARENT,
+        WS_EX_TOPMOST | WS_EX_LAYERED,
         L"NekooOverlayClass", L"",
         WS_POPUP,
         0, 0, w, h,
-        hwndParent, NULL, GetModuleHandle(NULL), NULL);
+        NULL, NULL, GetModuleHandle(NULL), NULL);
     
     // Make it semi-transparent
     SetLayeredWindowAttributes(g_hwndOverlay, 0, 100, LWA_ALPHA);
     
-    // Remove transparency for mouse input
-    SetWindowLong(g_hwndOverlay, GWL_EXSTYLE,
-        GetWindowLong(g_hwndOverlay, GWL_EXSTYLE) & ~WS_EX_TRANSPARENT);
-    
     ShowWindow(g_hwndOverlay, SW_SHOW);
+    UpdateWindow(g_hwndOverlay);
+    SetForegroundWindow(g_hwndOverlay);
     SetCapture(g_hwndOverlay);
     
-    // Message loop
+    // Simple message loop
     MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        if (msg.hwnd == g_hwndOverlay || msg.message == WM_QUIT) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-            
-            if (!IsWindow(g_hwndOverlay)) break;
-        }
+    while (!g_bDone && GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
     
-    if (g_bCancelled || !g_bSelecting) {
+    if (g_bCancelled) {
         pRect->left = pRect->top = pRect->right = pRect->bottom = 0;
     } else {
         *pRect = g_selectedRect;
@@ -79,23 +77,27 @@ void ShowOverlay(HWND hwndParent, RECT* pRect) {
 
 LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
-        case WM_LBUTTONDOWN:
+        case WM_LBUTTONDOWN: {
+            g_bDragging = true;
             g_bSelecting = true;
             g_ptStart.x = GET_X_LPARAM(lParam);
             g_ptStart.y = GET_Y_LPARAM(lParam);
             g_ptEnd = g_ptStart;
+            SetCapture(hwnd);
             return 0;
+        }
             
         case WM_MOUSEMOVE:
-            if (g_bSelecting) {
+            if (g_bDragging) {
                 g_ptEnd.x = GET_X_LPARAM(lParam);
                 g_ptEnd.y = GET_Y_LPARAM(lParam);
-                InvalidateRect(hwnd, NULL, TRUE);
+                InvalidateRect(hwnd, NULL, FALSE);
+                UpdateWindow(hwnd);
             }
             return 0;
             
         case WM_LBUTTONUP:
-            if (g_bSelecting) {
+            if (g_bDragging) {
                 g_ptEnd.x = GET_X_LPARAM(lParam);
                 g_ptEnd.y = GET_Y_LPARAM(lParam);
                 
@@ -106,6 +108,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 g_selectedRect.bottom = max(g_ptStart.y, g_ptEnd.y);
                 
                 ReleaseCapture();
+                g_bDone = true;
                 DestroyWindow(hwnd);
             }
             return 0;
@@ -113,6 +116,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         case WM_KEYDOWN:
             if (wParam == VK_ESCAPE) {
                 g_bCancelled = true;
+                g_bDone = true;
                 ReleaseCapture();
                 DestroyWindow(hwnd);
             }
@@ -122,37 +126,47 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
             
-            // Draw semi-transparent overlay
             RECT rc;
             GetClientRect(hwnd, &rc);
             
             Graphics graphics(hdc);
+            graphics.SetSmoothingMode(SmoothingModeAntiAlias);
+            
+            // Draw dark overlay
             SolidBrush darkBrush(Color(100, 0, 0, 0));
             graphics.FillRectangle(&darkBrush, 0, 0, rc.right, rc.bottom);
             
             // Draw selection rectangle
-            if (g_bSelecting) {
+            if (g_bSelecting && g_bDragging) {
                 int x = min(g_ptStart.x, g_ptEnd.x);
                 int y = min(g_ptStart.y, g_ptEnd.y);
                 int w = abs(g_ptEnd.x - g_ptStart.x);
                 int h = abs(g_ptEnd.y - g_ptStart.y);
                 
-                // Clear selected area
-                graphics.SetCompositingMode(CompositingModeSourceCopy);
-                SolidBrush clearBrush(Color(0, 0, 0, 0));
-                graphics.FillRectangle(&clearBrush, x, y, w, h);
-                
-                // Draw border
-                Pen borderPen(Color(255, 139, 92, 246), 2); // Purple
-                graphics.DrawRectangle(&borderPen, x, y, w, h);
-                
-                // Draw dimensions text
-                wchar_t text[64];
-                _snwprintf_s(text, _TRUNCATE, L"%d x %d", w, h);
-                
-                Font font(L"Segoe UI", 12);
-                SolidBrush textBrush(Color(255, 255, 255, 255));
-                graphics.DrawString(text, -1, &font, PointF((float)x, (float)y - 20), &textBrush);
+                if (w > 0 && h > 0) {
+                    // Clear selected area (make it transparent)
+                    graphics.SetCompositingMode(CompositingModeSourceCopy);
+                    SolidBrush clearBrush(Color(0, 0, 0, 0));
+                    graphics.FillRectangle(&clearBrush, x, y, w, h);
+                    
+                    // Draw purple border
+                    graphics.SetCompositingMode(CompositingModeSourceOver);
+                    Pen borderPen(Color(255, 139, 92, 246), 2);
+                    graphics.DrawRectangle(&borderPen, x, y, w, h);
+                    
+                    // Draw dimensions
+                    wchar_t text[64];
+                    _snwprintf_s(text, _TRUNCATE, L"%d x %d", w, h);
+                    
+                    Font font(L"Segoe UI", 12);
+                    SolidBrush textBrush(Color(255, 255, 255, 255));
+                    SolidBrush bgBrush(Color(200, 0, 0, 0));
+                    
+                    RectF textRect;
+                    graphics.MeasureString(text, -1, &font, PointF(0, 0), &textRect);
+                    graphics.FillRectangle(&bgBrush, (float)x, (float)y - 25, textRect.Width + 10, 20);
+                    graphics.DrawString(text, -1, &font, PointF((float)x + 5, (float)y - 22), &textBrush);
+                }
             }
             
             EndPaint(hwnd, &ps);
@@ -161,6 +175,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         
         case WM_DESTROY:
             g_hwndOverlay = NULL;
+            g_bDone = true;
             PostQuitMessage(0);
             return 0;
     }

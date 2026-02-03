@@ -52,8 +52,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = L"NekooScreenshotClass";
-    wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
-    wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     RegisterClassEx(&wc);
     
     // Create hidden window
@@ -66,7 +65,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     g_nid.uID = 1;
     g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_TRAYICON;
-    g_nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPICON));
+    g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION); // Default icon
     wcscpy_s(g_nid.szTip, L"Nekoo Screenshot - Ctrl+Shift+S");
     Shell_NotifyIcon(NIM_ADD, &g_nid);
     

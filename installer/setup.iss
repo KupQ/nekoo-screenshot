@@ -21,7 +21,6 @@ AllowNoIcons=yes
 LicenseFile=..\LICENSE
 OutputDir=.
 OutputBaseFilename=nekoo-screenshot-setup
-SetupIconFile=..\resources\icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

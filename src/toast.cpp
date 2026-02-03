@@ -23,7 +23,7 @@ void ShowToastNotification(const std::wstring& url) {
         wc.lpfnWndProc = ToastWndProc;
         wc.hInstance = GetModuleHandle(NULL);
         wc.lpszClassName = L"NekooToastClass";
-        wc.hbrBackground = CreateSolidBrush(RGB(26, 26, 26)); // Dark background
+        wc.hbrBackground = CreateSolidBrush(RGB(26, 26, 26));
         RegisterClassEx(&wc);
         registered = true;
     }
@@ -34,7 +34,7 @@ void ShowToastNotification(const std::wstring& url) {
     
     // Position at bottom-right
     int x = screenW - TOAST_WIDTH - TOAST_MARGIN;
-    int y = screenH - TOAST_HEIGHT - TOAST_MARGIN - 40; // Above taskbar
+    int y = screenH - TOAST_HEIGHT - TOAST_MARGIN - 40;
     
     // Create toast window
     g_hwndToast = CreateWindowEx(
@@ -48,7 +48,8 @@ void ShowToastNotification(const std::wstring& url) {
     // Make it slightly transparent
     SetLayeredWindowAttributes(g_hwndToast, 0, 250, LWA_ALPHA);
     
-    ShowWindow(g_hwndToast, SW_SHOW);
+    ShowWindow(g_hwndToast, SW_SHOWNOACTIVATE);
+    UpdateWindow(g_hwndToast);
     
     // Set auto-dismiss timer (5 seconds)
     g_timerId = SetTimer(g_hwndToast, TOAST_TIMER_ID, 5000, NULL);
@@ -58,24 +59,39 @@ LRESULT CALLBACK ToastWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     switch (msg) {
         case WM_CREATE: {
             // Create "Copy" button
-            CreateWindow(L"BUTTON", L"Copy Link",
+            HWND hBtn = CreateWindow(L"BUTTON", L"Copy Link",
                 WS_CHILD | WS_VISIBLE | BS_FLAT,
                 TOAST_WIDTH - 110, TOAST_HEIGHT - 40,
                 100, 30,
                 hwnd, (HMENU)1, GetModuleHandle(NULL), NULL);
+            
+            // Set button font
+            HFONT hFont = CreateFont(14, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+            SendMessage(hBtn, WM_SETFONT, (WPARAM)hFont, TRUE);
             return 0;
+        }
+        
+        case WM_CTLCOLORBTN: {
+            HDC hdcButton = (HDC)wParam;
+            SetTextColor(hdcButton, RGB(255, 255, 255));
+            SetBkColor(hdcButton, RGB(139, 92, 246));
+            return (LRESULT)CreateSolidBrush(RGB(139, 92, 246));
         }
         
         case WM_PAINT: {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
             
-            // Set dark background
+            // Dark background
             RECT rc;
             GetClientRect(hwnd, &rc);
-            FillRect(hdc, &rc, CreateSolidBrush(RGB(26, 26, 26)));
+            HBRUSH hBrush = CreateSolidBrush(RGB(26, 26, 26));
+            FillRect(hdc, &rc, hBrush);
+            DeleteObject(hBrush);
             
-            // Draw purple border
+            // Purple border
             HPEN hPen = CreatePen(PS_SOLID, 2, RGB(139, 92, 246));
             HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
             HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
@@ -84,7 +100,7 @@ LRESULT CALLBACK ToastWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             SelectObject(hdc, hOldBrush);
             DeleteObject(hPen);
             
-            // Draw title
+            // Title
             SetBkMode(hdc, TRANSPARENT);
             SetTextColor(hdc, RGB(255, 255, 255));
             HFONT hFont = CreateFont(16, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
@@ -95,7 +111,7 @@ LRESULT CALLBACK ToastWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             RECT titleRect = {10, 10, rc.right - 10, 30};
             DrawText(hdc, L"✅ Screenshot Uploaded!", -1, &titleRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
             
-            // Draw URL
+            // URL
             SelectObject(hdc, hOldFont);
             DeleteObject(hFont);
             
@@ -103,7 +119,7 @@ LRESULT CALLBACK ToastWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
             SelectObject(hdc, hFont);
-            SetTextColor(hdc, RGB(139, 92, 246)); // Purple
+            SetTextColor(hdc, RGB(139, 92, 246));
             
             RECT urlRect = {10, 35, rc.right - 120, 55};
             DrawText(hdc, g_toastUrl.c_str(), -1, &urlRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);

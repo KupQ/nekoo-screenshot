@@ -274,6 +274,23 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
             // Check auto-start checkbox
             CheckDlgButton(hDlg, IDC_AUTOSTART, BST_UNCHECKED);
             return TRUE;
+        
+        case WM_CTLCOLORDLG:
+            return (LRESULT)CreateSolidBrush(RGB(26, 26, 26));
+        
+        case WM_CTLCOLORSTATIC: {
+            HDC hdcStatic = (HDC)wParam;
+            SetTextColor(hdcStatic, RGB(255, 255, 255));
+            SetBkColor(hdcStatic, RGB(26, 26, 26));
+            return (LRESULT)CreateSolidBrush(RGB(26, 26, 26));
+        }
+        
+        case WM_CTLCOLORBTN: {
+            HDC hdcButton = (HDC)wParam;
+            SetTextColor(hdcButton, RGB(255, 255, 255));
+            SetBkColor(hdcButton, RGB(139, 92, 246));
+            return (LRESULT)CreateSolidBrush(RGB(139, 92, 246));
+        }
             
         case WM_COMMAND:
             switch (LOWORD(wParam)) {

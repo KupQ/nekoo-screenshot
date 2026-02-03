@@ -3,14 +3,24 @@ project(nekoo-screenshot)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(nekoo-screenshot main.cpp)
+# Enable Windows subsystem (no console)
+if(WIN32)
+    set(CMAKE_WIN32_EXECUTABLE TRUE)
+endif()
+
+add_executable(nekoo-screenshot WIN32
+    src/main.cpp
+    src/resource.rc
+)
 
 target_link_libraries(nekoo-screenshot
     gdiplus
     winhttp
-    user32
+    shell32
+    comctl32
 )
 
+# Set application icon
 set_target_properties(nekoo-screenshot PROPERTIES
-    WIN32_EXECUTABLE FALSE
+    WIN32_EXECUTABLE TRUE
 )

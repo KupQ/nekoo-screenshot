@@ -1,0 +1,4 @@
+#define IDI_APPICON 101
+#define IDD_SETTINGS 102
+#define IDC_HOTKEY 1003
+#define IDC_AUTOSTART 1004

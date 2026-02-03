@@ -1,6 +1,6 @@
 [package]
 name = "nekoo-screenshot"
-version = "1.0.5"
+version = "1.0.6"
 edition = "2021"
 authors = ["Nekoo Team"]
 description = "Fast screenshot tool that uploads to nekoo.ru"

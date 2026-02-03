@@ -1,6 +1,5 @@
 use reqwest::blocking::Client;
 use reqwest::blocking::multipart;
-use serde_json::Value;
 
 pub fn upload_to_nekoo(image_data: &[u8]) -> Result<String, String> {
     let client = Client::new();
@@ -29,21 +28,20 @@ pub fn upload_to_nekoo(image_data: &[u8]) -> Result<String, String> {
         .text()
         .map_err(|e| format!("Failed to read response: {}", e))?;
 
-    // Try to parse as JSON
-    if let Ok(json) = serde_json::from_str::<Value>(&body) {
-        if let Some(url) = json.get("url").and_then(|v| v.as_str()) {
-            return Ok(url.to_string());
-        }
-    }
-
-    // If not JSON, try to extract URL from HTML response
+    // Extract URL from HTML response
     // Nekoo returns HTML with the URL in various places
     if let Some(start) = body.find("https://nekoo.ru/") {
         let url_part = &body[start..];
-        if let Some(end) = url_part.find('"') {
-            let url = &url_part[..end];
-            return Ok(url.to_string());
-        }
+        // Find the end of the URL (usually a quote or whitespace)
+        let end = url_part
+            .find('"')
+            .or_else(|| url_part.find('\''))
+            .or_else(|| url_part.find('<'))
+            .or_else(|| url_part.find(' '))
+            .unwrap_or(url_part.len());
+        
+        let url = &url_part[..end];
+        return Ok(url.to_string());
     }
 
     Err("Failed to extract URL from response".to_string())

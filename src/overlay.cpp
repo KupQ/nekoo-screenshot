@@ -141,9 +141,9 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             RectF instructRect;
             graphics.MeasureString(instructText, -1, &instructFont, PointF(0, 0), &instructRect);
             
-            float instructX = (rc.right - instructRect.Width) / 2;
-            graphics.FillRectangle(&instructBgBrush, instructX - 10, 10, instructRect.Width + 20, instructRect.Height + 10);
-            graphics.DrawString(instructText, -1, &instructFont, PointF(instructX, 15), &instructTextBrush);
+            float instructX = (rc.right - instructRect.Width) / 2.0f;
+            graphics.FillRectangle(&instructBgBrush, instructX - 10.0f, 10.0f, instructRect.Width + 20.0f, instructRect.Height + 10.0f);
+            graphics.DrawString(instructText, -1, &instructFont, PointF(instructX, 15.0f), &instructTextBrush);
             
             // Draw dark overlay
             SolidBrush darkBrush(Color(100, 0, 0, 0));

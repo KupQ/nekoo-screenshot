@@ -10,6 +10,7 @@
 #include "upload.h"
 #include "overlay.h"
 #include "toast.h"
+#include "settings.h"
 
 #pragma comment(lib, "comctl32.lib")
 
@@ -26,6 +27,7 @@ HWND g_hwndMain;
 ULONG_PTR g_gdiplusToken;
 int g_hotkeyId = 1;
 int g_hotkeyRegionId = 2;
+AppSettings g_settings;
 
 // Forward declarations
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
@@ -35,6 +37,10 @@ void CaptureScreenshot(bool useRegion = false);
 void ShowToast(const std::wstring& url);
 std::vector<BYTE> CaptureRegion(const RECT& rect);
 std::vector<BYTE> CaptureFullscreen();
+void RegisterHotkeys();
+void UnregisterHotkeys();
+UINT ModifiersFromHotkey(WORD hotkey);
+UINT KeyFromHotkey(WORD hotkey);
 
 // System tray menu IDs
 #define IDM_CAPTURE_FULL 1001
@@ -62,6 +68,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     g_hwndMain = CreateWindowEx(0, L"NekooScreenshotClass", L"Nekoo Screenshot",
         WS_OVERLAPPEDWINDOW, 0, 0, 0, 0, NULL, NULL, hInstance, NULL);
     
+    // Load settings
+    g_settings = LoadSettings();
+    
     // Create system tray icon
     g_nid.cbSize = sizeof(NOTIFYICONDATA);
     g_nid.hWnd = g_hwndMain;
@@ -69,12 +78,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_TRAYICON;
     g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION); // Default icon
-    wcscpy_s(g_nid.szTip, L"Nekoo Screenshot - Ctrl+Shift+S");
+    wcscpy_s(g_nid.szTip, L"Nekoo Screenshot");
     Shell_NotifyIcon(NIM_ADD, &g_nid);
     
-    // Register global hotkeys
-    RegisterHotKey(g_hwndMain, g_hotkeyId, MOD_CONTROL | MOD_SHIFT, 'S'); // Fullscreen
-    RegisterHotKey(g_hwndMain, g_hotkeyRegionId, MOD_CONTROL | MOD_SHIFT, 'R'); // Region
+    // Register global hotkeys from settings
+    RegisterHotkeys();
     
     // Message loop
     MSG msg;
@@ -85,8 +93,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     
     // Cleanup
     Shell_NotifyIcon(NIM_DELETE, &g_nid);
-    UnregisterHotKey(g_hwndMain, g_hotkeyId);
-    UnregisterHotKey(g_hwndMain, g_hotkeyRegionId);
+    UnregisterHotkeys();
     GdiplusShutdown(g_gdiplusToken);
     
     return (int)msg.wParam;
@@ -264,16 +271,51 @@ void ShowSettingsDialog() {
     DialogBox(g_hInst, MAKEINTRESOURCE(IDD_SETTINGS), g_hwndMain, SettingsDlgProc);
 }
 
+UINT ModifiersFromHotkey(WORD hotkey) {
+    UINT mods = 0;
+    if (HIBYTE(hotkey) & HOTKEYF_CONTROL) mods |= MOD_CONTROL;
+    if (HIBYTE(hotkey) & HOTKEYF_SHIFT) mods |= MOD_SHIFT;
+    if (HIBYTE(hotkey) & HOTKEYF_ALT) mods |= MOD_ALT;
+    return mods;
+}
+
+UINT KeyFromHotkey(WORD hotkey) {
+    return LOBYTE(hotkey);
+}
+
+void RegisterHotkeys() {
+    RegisterHotKey(g_hwndMain, g_hotkeyId, g_settings.fullscreenModifiers, g_settings.fullscreenKey);
+    RegisterHotKey(g_hwndMain, g_hotkeyRegionId, g_settings.regionModifiers, g_settings.regionKey);
+}
+
+void UnregisterHotkeys() {
+    UnregisterHotKey(g_hwndMain, g_hotkeyId);
+    UnregisterHotKey(g_hwndMain, g_hotkeyRegionId);
+}
+
 INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
-        case WM_INITDIALOG:
-            // Set current hotkey
+        case WM_INITDIALOG: {
+            // Set fullscreen hotkey
+            BYTE mods = 0;
+            if (g_settings.fullscreenModifiers & MOD_CONTROL) mods |= HOTKEYF_CONTROL;
+            if (g_settings.fullscreenModifiers & MOD_SHIFT) mods |= HOTKEYF_SHIFT;
+            if (g_settings.fullscreenModifiers & MOD_ALT) mods |= HOTKEYF_ALT;
             SendDlgItemMessage(hDlg, IDC_HOTKEY, HKM_SETHOTKEY, 
-                MAKEWORD('S', HOTKEYF_CONTROL | HOTKEYF_SHIFT), 0);
+                MAKEWORD(g_settings.fullscreenKey, mods), 0);
             
-            // Check auto-start checkbox
-            CheckDlgButton(hDlg, IDC_AUTOSTART, BST_UNCHECKED);
+            // Set region hotkey
+            mods = 0;
+            if (g_settings.regionModifiers & MOD_CONTROL) mods |= HOTKEYF_CONTROL;
+            if (g_settings.regionModifiers & MOD_SHIFT) mods |= HOTKEYF_SHIFT;
+            if (g_settings.regionModifiers & MOD_ALT) mods |= HOTKEYF_ALT;
+            SendDlgItemMessage(hDlg, IDC_HOTKEY_REGION, HKM_SETHOTKEY, 
+                MAKEWORD(g_settings.regionKey, mods), 0);
+            
+            // Set auto-start checkbox
+            CheckDlgButton(hDlg, IDC_AUTOSTART, g_settings.autoStart ? BST_CHECKED : BST_UNCHECKED);
             return TRUE;
+        }
         
         case WM_CTLCOLORDLG:
             return (LRESULT)CreateSolidBrush(RGB(26, 26, 26));
@@ -294,10 +336,30 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
             
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
-                case IDOK:
-                    // TODO: Save settings
+                case IDOK: {
+                    // Get fullscreen hotkey
+                    WORD hotkey = (WORD)SendDlgItemMessage(hDlg, IDC_HOTKEY, HKM_GETHOTKEY, 0, 0);
+                    g_settings.fullscreenModifiers = ModifiersFromHotkey(hotkey);
+                    g_settings.fullscreenKey = KeyFromHotkey(hotkey);
+                    
+                    // Get region hotkey
+                    hotkey = (WORD)SendDlgItemMessage(hDlg, IDC_HOTKEY_REGION, HKM_GETHOTKEY, 0, 0);
+                    g_settings.regionModifiers = ModifiersFromHotkey(hotkey);
+                    g_settings.regionKey = KeyFromHotkey(hotkey);
+                    
+                    // Get auto-start
+                    g_settings.autoStart = (IsDlgButtonChecked(hDlg, IDC_AUTOSTART) == BST_CHECKED);
+                    
+                    // Save settings
+                    SaveSettings(g_settings);
+                    
+                    // Re-register hotkeys
+                    UnregisterHotkeys();
+                    RegisterHotkeys();
+                    
                     EndDialog(hDlg, IDOK);
                     return TRUE;
+                }
                     
                 case IDCANCEL:
                     EndDialog(hDlg, IDCANCEL);
@@ -307,3 +369,4 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
     }
     return FALSE;
 }
+

@@ -15,6 +15,7 @@ add_executable(nekoo-screenshot WIN32
     src/upload.cpp
     src/overlay.cpp
     src/toast.cpp
+    src/settings.cpp
     src/resource.rc
 )
 

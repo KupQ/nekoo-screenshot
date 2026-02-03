@@ -3,16 +3,29 @@
 
 // Icon removed temporarily - will add proper icon later
 
-IDD_SETTINGS DIALOGEX 0, 0, 300, 200
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_SETTINGS DIALOGEX 0, 0, 320, 280
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU | DS_CENTER
 CAPTION "Nekoo Screenshot Settings"
 FONT 9, "Segoe UI"
 BEGIN
-    LTEXT "Hotkey:", IDC_STATIC, 20, 20, 50, 14
-    CONTROL "", IDC_HOTKEY, "msctls_hotkey32", WS_BORDER | WS_TABSTOP, 80, 18, 180, 14
+    // Title
+    LTEXT "⚙️ Nekoo Screenshot Settings", IDC_STATIC, 20, 15, 280, 16, SS_CENTER
     
-    CONTROL "Start with Windows", IDC_AUTOSTART, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 20, 50, 200, 14
+    // Fullscreen hotkey section
+    GROUPBOX "Fullscreen Capture", IDC_STATIC, 20, 45, 280, 50
+    LTEXT "Hotkey:", IDC_STATIC, 35, 65, 50, 14
+    CONTROL "", IDC_HOTKEY, "msctls_hotkey32", WS_BORDER | WS_TABSTOP, 90, 63, 190, 16
     
-    DEFPUSHBUTTON "OK", IDOK, 140, 170, 70, 20
-    PUSHBUTTON "Cancel", IDCANCEL, 220, 170, 70, 20
+    // Region hotkey section
+    GROUPBOX "Region Capture", IDC_STATIC, 20, 105, 280, 50
+    LTEXT "Hotkey:", IDC_STATIC, 35, 125, 50, 14
+    CONTROL "", IDC_HOTKEY_REGION, "msctls_hotkey32", WS_BORDER | WS_TABSTOP, 90, 123, 190, 16
+    
+    // Auto-start section
+    GROUPBOX "Startup", IDC_STATIC, 20, 165, 280, 40
+    CONTROL "Start with Windows", IDC_AUTOSTART, "Button", BS_AUTOCHECKBOX | WS_TABSTOP, 35, 180, 250, 14
+    
+    // Buttons
+    DEFPUSHBUTTON "Save", IDOK, 140, 240, 70, 25
+    PUSHBUTTON "Cancel", IDCANCEL, 220, 240, 70, 25
 END

@@ -1,4 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
+#define UNICODE
+#define _UNICODE
 #include <windows.h>
 #include <winhttp.h>
 #include <gdiplus.h>
@@ -14,19 +16,38 @@
 
 using namespace Gdiplus;
 
-// Global hotkey ID
 #define HOTKEY_SCREENSHOT 1
 
-// Settings structure
 struct Settings {
     int hotkeyModifiers = MOD_CONTROL | MOD_SHIFT;
     int hotkeyKey = 'S';
-    std::wstring uploadUrl = L"nekoo.ru";
 };
 
 Settings g_settings;
 
-// Function to capture screenshot
+int GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
+    UINT num = 0;
+    UINT size = 0;
+    GetImageEncodersSize(&num, &size);
+    if (size == 0) return -1;
+    
+    ImageCodecInfo* pImageCodecInfo = (ImageCodecInfo*)(malloc(size));
+    if (pImageCodecInfo == NULL) return -1;
+    
+    GetImageEncoders(num, size, pImageCodecInfo);
+    
+    for (UINT j = 0; j < num; ++j) {
+        if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
+            *pClsid = pImageCodecInfo[j].Clsid;
+            free(pImageCodecInfo);
+            return j;
+        }
+    }
+    
+    free(pImageCodecInfo);
+    return -1;
+}
+
 std::vector<BYTE> CaptureScreenshot() {
     std::vector<BYTE> imageData;
     
@@ -36,28 +57,31 @@ std::vector<BYTE> CaptureScreenshot() {
     HDC hdcScreen = GetDC(NULL);
     HDC hdcMem = CreateCompatibleDC(hdcScreen);
     HBITMAP hBitmap = CreateCompatibleBitmap(hdcScreen, screenWidth, screenHeight);
-    SelectObject(hdcMem, hBitmap);
+    HBITMAP hOld = (HBITMAP)SelectObject(hdcMem, hBitmap);
     
     BitBlt(hdcMem, 0, 0, screenWidth, screenHeight, hdcScreen, 0, 0, SRCCOPY);
     
-    Bitmap bitmap(hBitmap, NULL);
+    Bitmap* bitmap = new Bitmap(hBitmap, NULL);
     IStream* stream = NULL;
     CreateStreamOnHGlobal(NULL, TRUE, &stream);
     
     CLSID pngClsid;
-    CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &pngClsid);
-    bitmap.Save(stream, &pngClsid, NULL);
+    GetEncoderClsid(L"image/png", &pngClsid);
+    bitmap->Save(stream, &pngClsid, NULL);
     
     STATSTG statstg;
     stream->Stat(&statstg, STATFLAG_DEFAULT);
-    ULONG size = statstg.cbSize.LowPart;
+    ULONG size = (ULONG)statstg.cbSize.QuadPart;
     
     imageData.resize(size);
     LARGE_INTEGER li = {0};
     stream->Seek(li, STREAM_SEEK_SET, NULL);
-    stream->Read(imageData.data(), size, NULL);
+    ULONG bytesRead = 0;
+    stream->Read(imageData.data(), size, &bytesRead);
     stream->Release();
     
+    delete bitmap;
+    SelectObject(hdcMem, hOld);
     DeleteObject(hBitmap);
     DeleteDC(hdcMem);
     ReleaseDC(NULL, hdcScreen);
@@ -65,18 +89,17 @@ std::vector<BYTE> CaptureScreenshot() {
     return imageData;
 }
 
-// Function to upload to nekoo.ru
 std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
     std::wstring url;
     
-    HINTERNET hSession = WinHttpOpen(L"Nekoo Screenshot/1.0",
+    HINTERNET hSession = WinHttpOpen(L"Nekoo/1.0",
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
         WINHTTP_NO_PROXY_NAME,
         WINHTTP_NO_PROXY_BYPASS, 0);
     
     if (!hSession) return L"";
     
-    HINTERNET hConnect = WinHttpConnect(hSession, g_settings.uploadUrl.c_str(),
+    HINTERNET hConnect = WinHttpConnect(hSession, L"nekoo.ru",
         INTERNET_DEFAULT_HTTPS_PORT, 0);
     
     if (!hConnect) {
@@ -95,25 +118,23 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
         return L"";
     }
     
-    std::string boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
-    std::string contentType = "multipart/form-data; boundary=" + boundary;
-    
+    std::string boundary = "----Boundary";
     std::ostringstream body;
     body << "--" << boundary << "\r\n";
     body << "Content-Disposition: form-data; name=\"file\"; filename=\"screenshot.png\"\r\n";
     body << "Content-Type: image/png\r\n\r\n";
-    body.write(reinterpret_cast<const char*>(imageData.data()), imageData.size());
+    body.write((const char*)imageData.data(), imageData.size());
     body << "\r\n--" << boundary << "--\r\n";
     
     std::string bodyStr = body.str();
+    std::wstring contentType = L"Content-Type: multipart/form-data; boundary=----Boundary";
     
-    std::wstring headers = L"Content-Type: " + std::wstring(contentType.begin(), contentType.end());
-    WinHttpAddRequestHeaders(hRequest, headers.c_str(), -1, WINHTTP_ADDREQ_FLAG_ADD);
+    WinHttpAddRequestHeaders(hRequest, contentType.c_str(), -1, WINHTTP_ADDREQ_FLAG_ADD);
     
     BOOL result = WinHttpSendRequest(hRequest,
         WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-        (LPVOID)bodyStr.c_str(), bodyStr.length(),
-        bodyStr.length(), 0);
+        (LPVOID)bodyStr.c_str(), (DWORD)bodyStr.length(),
+        (DWORD)bodyStr.length(), 0);
     
     if (result) {
         result = WinHttpReceiveResponse(hRequest, NULL);
@@ -124,16 +145,14 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
             
             do {
                 dwSize = 0;
-                WinHttpQueryDataAvailable(hRequest, &dwSize);
-                
-                if (dwSize > 0) {
-                    char* buffer = new char[dwSize + 1];
-                    ZeroMemory(buffer, dwSize + 1);
+                if (WinHttpQueryDataAvailable(hRequest, &dwSize) && dwSize > 0) {
+                    std::vector<char> buffer(dwSize + 1);
                     DWORD dwDownloaded = 0;
                     
-                    WinHttpReadData(hRequest, buffer, dwSize, &dwDownloaded);
-                    response += buffer;
-                    delete[] buffer;
+                    if (WinHttpReadData(hRequest, buffer.data(), dwSize, &dwDownloaded)) {
+                        buffer[dwDownloaded] = '\0';
+                        response += buffer.data();
+                    }
                 }
             } while (dwSize > 0);
             
@@ -153,7 +172,6 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
     return url;
 }
 
-// Function to copy to clipboard
 void CopyToClipboard(const std::wstring& text) {
     if (OpenClipboard(NULL)) {
         EmptyClipboard();
@@ -162,7 +180,8 @@ void CopyToClipboard(const std::wstring& text) {
         HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, size);
         
         if (hMem) {
-            memcpy(GlobalLock(hMem), text.c_str(), size);
+            void* pMem = GlobalLock(hMem);
+            memcpy(pMem, text.c_str(), size);
             GlobalUnlock(hMem);
             SetClipboardData(CF_UNICODETEXT, hMem);
         }
@@ -171,7 +190,6 @@ void CopyToClipboard(const std::wstring& text) {
     }
 }
 
-// Load settings
 void LoadSettings() {
     std::ifstream file("settings.txt");
     if (file.is_open()) {
@@ -179,7 +197,6 @@ void LoadSettings() {
         while (std::getline(file, line)) {
             if (line.find("hotkey=") == 0) {
                 std::string hotkey = line.substr(7);
-                // Parse hotkey (e.g., "Ctrl+Shift+S")
                 g_settings.hotkeyModifiers = 0;
                 if (hotkey.find("Ctrl") != std::string::npos) g_settings.hotkeyModifiers |= MOD_CONTROL;
                 if (hotkey.find("Shift") != std::string::npos) g_settings.hotkeyModifiers |= MOD_SHIFT;
@@ -195,12 +212,10 @@ void LoadSettings() {
     }
 }
 
-// Save settings
 void SaveSettings() {
     std::ofstream file("settings.txt");
     if (file.is_open()) {
         file << "# Nekoo Screenshot Settings\n";
-        file << "# Hotkey format: Ctrl+Shift+S (or Ctrl+S, Alt+S, etc.)\n";
         file << "hotkey=";
         if (g_settings.hotkeyModifiers & MOD_CONTROL) file << "Ctrl+";
         if (g_settings.hotkeyModifiers & MOD_SHIFT) file << "Shift+";
@@ -210,14 +225,13 @@ void SaveSettings() {
     }
 }
 
-// Handle screenshot
 void HandleScreenshot() {
-    std::wcout << L"\n📸 Capturing screenshot..." << std::endl;
+    std::wcout << L"\n📸 Capturing..." << std::endl;
     
     std::vector<BYTE> imageData = CaptureScreenshot();
     
     if (imageData.empty()) {
-        std::wcerr << L"❌ Failed to capture" << std::endl;
+        std::wcerr << L"❌ Failed" << std::endl;
         return;
     }
     
@@ -232,7 +246,7 @@ void HandleScreenshot() {
     
     std::wcout << L"✅ " << url << std::endl;
     CopyToClipboard(url);
-    std::wcout << L"📋 Copied to clipboard!" << std::endl;
+    std::wcout << L"📋 Copied!" << std::endl;
 }
 
 int main() {
@@ -240,28 +254,26 @@ int main() {
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
     
-    std::wcout << L"Nekoo Screenshot Tool v1.0" << std::endl;
-    std::wcout << L"============================" << std::endl;
+    std::wcout << L"Nekoo Screenshot v2.0" << std::endl;
+    std::wcout << L"=====================" << std::endl;
     
     LoadSettings();
-    SaveSettings(); // Create default settings if not exist
+    SaveSettings();
     
     std::wcout << L"Hotkey: ";
     if (g_settings.hotkeyModifiers & MOD_CONTROL) std::wcout << L"Ctrl+";
     if (g_settings.hotkeyModifiers & MOD_SHIFT) std::wcout << L"Shift+";
     if (g_settings.hotkeyModifiers & MOD_ALT) std::wcout << L"Alt+";
     std::wcout << (wchar_t)g_settings.hotkeyKey << std::endl;
-    std::wcout << L"\nEdit settings.txt to change hotkey" << std::endl;
+    std::wcout << L"\nEdit settings.txt to change" << std::endl;
     std::wcout << L"Press Ctrl+C to exit\n" << std::endl;
     
-    // Register hotkey
     if (!RegisterHotKey(NULL, HOTKEY_SCREENSHOT, g_settings.hotkeyModifiers, g_settings.hotkeyKey)) {
         std::wcerr << L"Failed to register hotkey!" << std::endl;
         GdiplusShutdown(gdiplusToken);
         return 1;
     }
     
-    // Message loop
     MSG msg = {0};
     while (GetMessage(&msg, NULL, 0, 0)) {
         if (msg.message == WM_HOTKEY && msg.wParam == HOTKEY_SCREENSHOT) {

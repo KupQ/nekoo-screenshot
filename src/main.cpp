@@ -58,12 +58,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     WNDCLASSEX wc = {sizeof(WNDCLASSEX)};
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = L"NekooScreenshotClass";
+    wc.lpszClassName = L"SekoClass";
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     RegisterClassEx(&wc);
     
     // Create hidden window
-    g_hwndMain = CreateWindowEx(0, L"NekooScreenshotClass", L"Nekoo Screenshot",
+    g_hwndMain = CreateWindowEx(0, L"SekoClass", L"Seko",
         WS_OVERLAPPEDWINDOW, 0, 0, 0, 0, NULL, NULL, hInstance, NULL);
     
     // Load settings
@@ -75,8 +75,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     g_nid.uID = 1;
     g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_TRAYICON;
-    g_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION); // Default icon
-    wcscpy_s(g_nid.szTip, L"Nekoo Screenshot");
+    g_nid.hIcon = LoadIcon(g_hInst, MAKEINTRESOURCE(IDI_APPICON)); // Default icon
+    wcscpy_s(g_nid.szTip, L"Seko");
     Shell_NotifyIcon(NIM_ADD, &g_nid);
     
     // Register global hotkeys from settings

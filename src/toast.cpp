@@ -26,7 +26,7 @@ void ShowUploadingToast() {
         WNDCLASSEX wc = {sizeof(WNDCLASSEX)};
         wc.lpfnWndProc = ToastWndProc;
         wc.hInstance = GetModuleHandle(NULL);
-        wc.lpszClassName = L"NekooToastClass";
+        wc.lpszClassName = L"SekoToastClass";
         wc.hbrBackground = CreateSolidBrush(RGB(255, 255, 255));
         RegisterClassEx(&wc);
         registered = true;
@@ -48,7 +48,7 @@ void ShowUploadingToast() {
     // Create toast window
     g_hwndToast = CreateWindowEx(
         WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TOOLWINDOW,
-        L"NekooToastClass",
+        L"SekoToastClass",
         L"",
         WS_POPUP,
         x, y, TOAST_WIDTH, TOAST_HEIGHT,
@@ -61,7 +61,7 @@ void ShowUploadingToast() {
 
 void UpdateToastWithUrl(const std::wstring& url) {
     g_toastUrl = url;
-    g_toastMessage = L"✓ Uploaded";
+    g_toastMessage = L"Uploaded";
     g_isUploading = false;
     
     if (g_hwndToast && IsWindow(g_hwndToast)) {

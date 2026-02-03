@@ -377,6 +377,11 @@ static UINT g_regionData[2] = {0};
 INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
         case WM_INITDIALOG: {
+            // Set dialog icon
+            HICON hIcon = LoadIcon(g_hInst, MAKEINTRESOURCE(IDI_APPICON));
+            SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+            SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+
             // Initialize data arrays with current settings
             g_fullscreenData[0] = g_settings.fullscreenKey;
             g_fullscreenData[1] = g_settings.fullscreenModifiers;

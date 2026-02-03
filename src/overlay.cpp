@@ -133,35 +133,33 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             Graphics graphics(hdc);
             graphics.SetSmoothingMode(SmoothingModeAntiAlias);
             
-            // Draw instruction text at top (centered)
-            Font instructFont(L"Segoe UI", 14, FontStyleBold);
-            SolidBrush instructTextBrush(Color(255, 255, 255, 255));
-            SolidBrush instructBgBrush(Color(200, 0, 0, 0));
-            
-            const wchar_t* instructText = L"Click and drag to select region (ESC to cancel)";
-            RectF instructRect;
-            graphics.MeasureString(instructText, -1, &instructFont, PointF(0, 0), &instructRect);
-            
-            // Center horizontally
-            float instructX = (rc.right - instructRect.Width) / 2.0f;
-            float instructY = 20.0f;
-            
-            // Draw rounded background
-            graphics.FillRectangle(&instructBgBrush, instructX - 50.0f, instructY - 5.0f, instructRect.Width + 100.0f, instructRect.Height + 10.0f);
-            
-            // Load and draw icon
-            HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPICON));
-            if (hIcon) {
-                DrawIconEx(hdc, (int)(instructX - 40.0f), (int)(instructY - 2.0f), hIcon, 24, 24, 0, NULL, DI_NORMAL);
+            // Draw instruction text at top (only when not dragging)
+            if (!g_bDragging) {
+                Font instructFont(L"Segoe UI", 14, FontStyleBold);
+                SolidBrush instructTextBrush(Color(255, 255, 255, 255));
+                SolidBrush instructBgBrush(Color(200, 0, 0, 0));
+                
+                const wchar_t* instructText = L"Click and drag to select region (ESC to cancel)";
+                RectF instructRect;
+                graphics.MeasureString(instructText, -1, &instructFont, PointF(0, 0), &instructRect);
+                
+                // Center horizontally at top of screen
+                float instructX = (rc.right - instructRect.Width - 40.0f) / 2.0f;
+                float instructY = 30.0f;
+                
+                // Draw rounded background
+                graphics.FillRectangle(&instructBgBrush, instructX, instructY - 5.0f, instructRect.Width + 80.0f, instructRect.Height + 10.0f);
+                
+                // Load and draw icon
+                HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPICON));
+                if (hIcon) {
+                    DrawIconEx(hdc, (int)(instructX + 10.0f), (int)(instructY - 2.0f), hIcon, 24, 24, 0, NULL, DI_NORMAL);
+                }
+                
+                // Draw text
+                graphics.DrawString(instructText, -1, &instructFont, PointF(instructX + 45.0f, instructY), &instructTextBrush);
             }
-            
-            // Draw text centered
-            StringFormat format;
-            format.SetAlignment(StringAlignmentCenter);
-            format.SetLineAlignment(StringAlignmentCenter);
-            RectF textRect(instructX - 15.0f, instructY - 5.0f, instructRect.Width + 30.0f, instructRect.Height + 10.0f);
-            graphics.DrawString(instructText, -1, &instructFont, textRect, &format, &instructTextBrush);
-            
+
             // Draw dark overlay
             SolidBrush darkBrush(Color(100, 0, 0, 0));
             graphics.FillRectangle(&darkBrush, 0, 0, rc.right, rc.bottom);

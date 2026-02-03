@@ -2,6 +2,7 @@
 #include <shellapi.h>
 #include <gdiplus.h>
 #include <winhttp.h>
+#include <commctrl.h>
 #include <string>
 #include <fstream>
 #include <vector>
@@ -9,6 +10,8 @@
 #include "upload.h"
 #include "overlay.h"
 #include "toast.h"
+
+#pragma comment(lib, "comctl32.lib")
 
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "winhttp.lib")

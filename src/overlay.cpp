@@ -164,7 +164,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     
                     RectF textRect;
                     graphics.MeasureString(text, -1, &font, PointF(0, 0), &textRect);
-                    graphics.FillRectangle(&bgBrush, (float)x, (float)y - 25, textRect.Width + 10, 20);
+                    graphics.FillRectangle(&bgBrush, (float)x, (float)y - 25, textRect.Width + 10.0f, 20.0f);
                     graphics.DrawString(text, -1, &font, PointF((float)x + 5, (float)y - 22), &textBrush);
                 }
             }

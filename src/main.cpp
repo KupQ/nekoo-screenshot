@@ -103,7 +103,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             return 0;
             
         case WM_TRAYICON:
-            if (lParam == WM_RBUTTONUP) {
+            if (lParam == WM_RBUTTONUP || lParam == WM_LBUTTONUP) {
                 POINT pt;
                 GetCursorPos(&pt);
                 

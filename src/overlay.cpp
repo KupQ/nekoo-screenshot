@@ -176,7 +176,7 @@ LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         case WM_DESTROY:
             g_hwndOverlay = NULL;
             g_bDone = true;
-            PostQuitMessage(0);
+            // Don't call PostQuitMessage - it exits the entire app!
             return 0;
     }
     

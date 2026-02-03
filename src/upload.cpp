@@ -22,7 +22,7 @@ std::wstring UploadToNekoo(const std::vector<BYTE>& imageData) {
         return L"";
     }
     
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/upload",
+    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/screenshot/upload",
         NULL, WINHTTP_NO_REFERER,
         WINHTTP_DEFAULT_ACCEPT_TYPES,
         WINHTTP_FLAG_SECURE);

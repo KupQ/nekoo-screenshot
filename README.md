@@ -1,67 +1,65 @@
 # Nekoo Screenshot Tool
 
-**Fast screenshot tool that uploads to nekoo.ru**
+**Windows screenshot tool with customizable hotkeys that uploads to nekoo.ru**
 
-## Installation
+## Download
 
-Download the latest release:
-- **Windows:** [nekoo-screenshot-windows.exe](https://github.com/KupQ/nekoo-screenshot/releases/latest)
-- **macOS:** [nekoo-screenshot-macos](https://github.com/KupQ/nekoo-screenshot/releases/latest)
+[Download nekoo-screenshot.exe](https://github.com/KupQ/nekoo-screenshot/releases/latest)
 
 ## Usage
 
-Run the executable to capture and upload:
-```bash
-nekoo-screenshot
+1. Run `nekoo-screenshot.exe`
+2. It runs in background listening for hotkey
+3. Press **Ctrl+Shift+S** (default) to capture
+4. Screenshot uploads and link copies to clipboard
+
+## Customizing Hotkey
+
+Edit `settings.txt` next to the .exe:
+
+```
+# Nekoo Screenshot Settings
+# Hotkey format: Ctrl+Shift+S (or Ctrl+S, Alt+S, etc.)
+hotkey=Ctrl+Shift+S
 ```
 
-It will:
-1. Capture your fullscreen
-2. Upload to nekoo.ru
-3. Copy link to clipboard
-4. Show the link
+Change to any combination:
+- `Ctrl+S`
+- `Alt+S`
+- `Ctrl+Alt+S`
+- `Shift+F12`
+- etc.
 
-## Setting Up Hotkey
-
-### Windows
-1. Right-click `nekoo-screenshot.exe` → **Create shortcut**
-2. Right-click the shortcut → **Properties**
-3. In "Shortcut key" field, press **PrintScreen** (or any key combo)
-4. Click **OK**
-5. Move shortcut to Desktop or Start Menu
-
-Now pressing PrintScreen will run the tool!
-
-### macOS
-1. Open **System Preferences** → **Keyboard** → **Shortcuts**
-2. Click **App Shortcuts** → **+** button
-3. Choose **All Applications**
-4. Menu Title: (leave blank)
-5. Keyboard Shortcut: Press your desired key (e.g., Cmd+Shift+3)
-6. Click **Add**
-
-Or use Automator to create a Quick Action bound to a hotkey.
+Restart the tool after changing settings.
 
 ## Features
 
-- ✅ Fast fullscreen capture
+- ✅ Global hotkey support (customizable)
+- ✅ Runs in background
 - ✅ Instant upload to nekoo.ru
 - ✅ Auto-copy link to clipboard
-- ✅ Cross-platform (Windows & macOS)
-- ✅ Minimal dependencies
+- ✅ Native Windows (no dependencies)
+- ✅ Settings file for configuration
 
 ## Building from Source
+
+Requirements:
+- Visual Studio 2022 or later
+- CMake 3.15+
 
 ```bash
 git clone https://github.com/KupQ/nekoo-screenshot.git
 cd nekoo-screenshot
-cargo build --release
+cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
 ```
+
+Binary: `build/Release/nekoo-screenshot.exe`
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
+MIT License
 
 ---
 
-Made with ❤️ for [nekoo.ru](https://nekoo.ru)
+Made for [nekoo.ru](https://nekoo.ru)

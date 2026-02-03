@@ -1,0 +1,33 @@
+[package]
+name = "nekoo-screenshot"
+version = "1.0.0"
+edition = "2021"
+authors = ["Nekoo Team"]
+description = "Fast screenshot tool that uploads to nekoo.ru"
+license = "MIT"
+repository = "https://github.com/KupQ/nekoo-screenshot"
+
+[dependencies]
+screenshots = "0.8"
+reqwest = { version = "0.12", features = ["multipart", "blocking"] }
+arboard = "3.4"
+global-hotkey = "0.6"
+tray-icon = "0.17"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+notify-rust = "4.11"
+dirs = "5.0"
+image = "0.25"
+winit = "0.30"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "shellapi"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.25"
+objc = "0.2"
+
+[[bin]]
+name = "nekoo-screenshot"
+path = "src/main.rs"

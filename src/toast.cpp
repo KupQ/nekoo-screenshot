@@ -61,7 +61,7 @@ void ShowUploadingToast() {
 
 void UpdateToastWithUrl(const std::wstring& url) {
     g_toastUrl = url;
-    g_toastMessage = L"Uploaded";
+    g_toastMessage = L"Uploaded - Link copied to clipboard";
     g_isUploading = false;
     
     if (g_hwndToast && IsWindow(g_hwndToast)) {

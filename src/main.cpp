@@ -318,20 +318,21 @@ INT_PTR CALLBACK SettingsDlgProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPar
         }
         
         case WM_CTLCOLORDLG:
-            return (LRESULT)CreateSolidBrush(RGB(26, 26, 26));
+            // Clean white background
+            return (LRESULT)GetStockObject(WHITE_BRUSH);
         
         case WM_CTLCOLORSTATIC: {
             HDC hdcStatic = (HDC)wParam;
-            SetTextColor(hdcStatic, RGB(255, 255, 255));
-            SetBkColor(hdcStatic, RGB(26, 26, 26));
-            return (LRESULT)CreateSolidBrush(RGB(26, 26, 26));
+            SetTextColor(hdcStatic, RGB(50, 50, 50)); // Dark gray text
+            SetBkColor(hdcStatic, RGB(255, 255, 255)); // White background
+            return (LRESULT)GetStockObject(WHITE_BRUSH);
         }
         
-        case WM_CTLCOLORBTN: {
-            HDC hdcButton = (HDC)wParam;
-            SetTextColor(hdcButton, RGB(255, 255, 255));
-            SetBkColor(hdcButton, RGB(139, 92, 246));
-            return (LRESULT)CreateSolidBrush(RGB(139, 92, 246));
+        case WM_CTLCOLOREDIT: {
+            HDC hdcEdit = (HDC)wParam;
+            SetTextColor(hdcEdit, RGB(30, 30, 30));
+            SetBkColor(hdcEdit, RGB(250, 250, 250));
+            return (LRESULT)CreateSolidBrush(RGB(250, 250, 250));
         }
             
         case WM_COMMAND:
